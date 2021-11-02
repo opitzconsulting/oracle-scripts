@@ -2141,7 +2141,7 @@ pull_ocenv_main() {
   if [[ "${RET_CODE}" -eq 0 ]]
   then
 
-    if curl https://raw.githubusercontent.com/JanSchnacki/oracle-scripts/main/ocenv > "${GV_SOURCED_SCRIPT}.tmp"
+    if curl https://raw.githubusercontent.com/opitzconsulting/oracle-scripts/main/ocenv > "${GV_SOURCED_SCRIPT}.tmp"
     then
       mv "${GV_SOURCED_SCRIPT}.tmp" "${GV_SOURCED_SCRIPT}"
     fi
