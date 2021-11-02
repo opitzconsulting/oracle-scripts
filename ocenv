@@ -2127,7 +2127,7 @@ read_proxy() {
   printf "================================================================\n"
   printf "Please enter a valid https proxy definition to access github.com\n"
   printf "Currently the environment the following proxy defined:\n"
-  printf "  HTTPS_PROXY=\"%s\"" "${HTTPS_PROXY}\n"
+  printf "  HTTPS_PROXY=\"%s\"\n" "${HTTPS_PROXY}"
   printf "Press <ENTER> to keep this unchanged\n"
   printf "\n"
   read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
@@ -2159,7 +2159,7 @@ get_tpt_oracle() {
 
   if [[ "${RET_CODE}" -eq 0 ]]
   then
-    if curl -G https://github.com/tanelpoder/tpt-oracle/archive/master.zip > "${GV_SQL_DIR}/tpt-oracle-master.zip"
+    if curl -G https://codeload.github.com/tanelpoder/tpt-oracle/zip/master > "${GV_SQL_DIR}/tpt-oracle-master.zip"
     then
       if cd "${GV_SQL_DIR}"
       then
