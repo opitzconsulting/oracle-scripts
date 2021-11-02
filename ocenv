@@ -2122,25 +2122,29 @@ distribute_env () {
     scp "${GV_SOURCED_SCRIPT}" "${LV_HOST}":"${GV_SOURCED_SCRIPT}"
   done
 }
+read_proxy() {
+  local LV_PROXY_URL
+  printf "================================================================"
+  printf "Please enter a valid https proxy definition to access github.com"
+  printf "Currently the environment the following proxy defined:"
+  printf "  HTTPS_PROXY=\"%s\"" "${HTTPS_PROXY}"
+  printf "Press <ENTER> to keep this unchanged"
+  printf ""
+  read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
+  if [[ -n "${LV_PROXY_URL}" ]]
+  then
+    export HTTPS_PROXY="${LV_PROXY_URL}"
+  else
+    unset HTTPS_PROXY
+  fi
+}
 pull_ocenv_main() {
-  read_proxy() {
-    local LV_PROXY_URL
-    read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
-    if [[ -n "${LV_PROXY_URL}" ]]
-    then
-      export HTTPS_PROXY="${LV_PROXY_URL}"
-    else
-      unset HTTPS_PROXY
-    fi
-  }
-
   local RET_CODE
-  RET_CODE=$?
   read_proxy
+  RET_CODE=$?
 
   if [[ "${RET_CODE}" -eq 0 ]]
   then
-
     if curl https://raw.githubusercontent.com/opitzconsulting/oracle-scripts/main/ocenv > "${GV_SOURCED_SCRIPT}.tmp"
     then
       mv "${GV_SOURCED_SCRIPT}.tmp" "${GV_SOURCED_SCRIPT}"
@@ -2149,16 +2153,23 @@ pull_ocenv_main() {
 }
 
 get_tpt_oracle() {
-  if curl -G https://github.com/tanelpoder/tpt-oracle/archive/master.zip > "${GV_SQL_DIR}/tpt-oracle-master.zip"
+  local RET_CODE
+  read_proxy
+  RET_CODE=$?
+
+  if [[ "${RET_CODE}" -eq 0 ]]
   then
-    if cd "${GV_SQL_DIR}"
+    if curl -G https://github.com/tanelpoder/tpt-oracle/archive/master.zip > "${GV_SQL_DIR}/tpt-oracle-master.zip"
     then
-      unzip tpt-oracle-master.zip -d "${GV_SQL_DIR}"
-      rm -rf "${GV_SQL_DIR}/tpt"
-      mv "${GV_SQL_DIR}/tpt-oracle-master" "${GV_SQL_DIR}/tpt"
+      if cd "${GV_SQL_DIR}"
+      then
+        unzip tpt-oracle-master.zip -d "${GV_SQL_DIR}"
+        rm -rf "${GV_SQL_DIR}/tpt"
+        mv "${GV_SQL_DIR}/tpt-oracle-master" "${GV_SQL_DIR}/tpt"
+      fi
     fi
+    set_sql_path_vars
   fi
-  set_sql_path_vars
 }
 
 list_env() {
