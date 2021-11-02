@@ -2122,12 +2122,7 @@ distribute_env () {
     scp "${GV_SOURCED_SCRIPT}" "${LV_HOST}":"${GV_SOURCED_SCRIPT}"
   done
 }
-pull_ocenv_master() {
-  read_username() {
-    local LV_USERNAME
-    read -r -p "Enter username to access git.opitz-consulting.com: " LV_USERNAME
-    echo "${LV_USERNAME}"
-  }
+pull_ocenv_main() {
   read_proxy() {
     local LV_PROXY_URL
     read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
@@ -2139,15 +2134,14 @@ pull_ocenv_master() {
     fi
   }
 
-  local LV_GIT_USERNAME RET_CODE
-  LV_GIT_USERNAME="$(read_username)"
+  local RET_CODE
   RET_CODE=$?
   read_proxy
 
   if [[ "${RET_CODE}" -eq 0 ]]
   then
 
-    if curl --user "${LV_GIT_USERNAME}" -G https://git.opitz-consulting.de/users/jas/repos/skriptsammlung/raw/unix/ocenv?at=refs%2Fheads%2Fmaster > "${GV_SOURCED_SCRIPT}.tmp"
+    if curl https://raw.githubusercontent.com/JanSchnacki/oracle-scripts/main/ocenv > "${GV_SOURCED_SCRIPT}.tmp"
     then
       mv "${GV_SOURCED_SCRIPT}.tmp" "${GV_SOURCED_SCRIPT}"
     fi
