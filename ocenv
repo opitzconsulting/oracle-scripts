@@ -2124,12 +2124,12 @@ distribute_env () {
 }
 read_proxy() {
   local LV_PROXY_URL
-  printf "================================================================"
-  printf "Please enter a valid https proxy definition to access github.com"
-  printf "Currently the environment the following proxy defined:"
-  printf "  HTTPS_PROXY=\"%s\"" "${HTTPS_PROXY}"
-  printf "Press <ENTER> to keep this unchanged"
-  printf ""
+  printf "================================================================\n"
+  printf "Please enter a valid https proxy definition to access github.com\n"
+  printf "Currently the environment the following proxy defined:\n"
+  printf "  HTTPS_PROXY=\"%s\"" "${HTTPS_PROXY}\n"
+  printf "Press <ENTER> to keep this unchanged\n"
+  printf "\n"
   read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
   if [[ -n "${LV_PROXY_URL}" ]]
   then
