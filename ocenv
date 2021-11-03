@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2012,SC2013,SC2044,SC2045
+# shellcheck disable=SC2012,SC2013
 ## There are currently a number of open ShellCheck messages of WARNING and INFO
 ## level for the messagee-codes SC2012, SC2013, SC2044 and SC2045.
 ## These are going to be removed step by step. To allow automatic code
@@ -409,14 +409,16 @@ then
     GV_RLWRAP="$(which rlwrap 2>/dev/null)"
   elif [[ "${GV_OS_TYPE}" == 'Linux' ]]
   then
-    for LV_RLWRAP_BINARY in $(find ~ -type f -executable -name rlwrap 2>/dev/null)
+    # Look for "custom" rlwrap binaries in $HOME of current user
+    # Use first hit that is executable without error
+    while read -r LV_RLWRAP_BINARY
     do
       if "${LV_RLWRAP_BINARY}" -v 1>/dev/null 2>&1
       then
         GV_RLWRAP="${LV_RLWRAP_BINARY}"
         break;
       fi
-    done
+    done <<< "$(find ~ -type f -executable -name rlwrap 2>/dev/null)"
   fi
 fi
 
@@ -1124,21 +1126,19 @@ edu() {
     fi
     local LV_ACT_FS
     LV_ACT_FS="$(df -P "${LV_DIR}" | awk 'NR>1{print $NF}')"
-    ## possibly use "shopt -s dotglob"
-    for LV_ELEM in $(ls -1A "${LV_DIR}/")
+    while read -r LV_ELEM
     do
       LV_ELEM_FS="$(df -P "${LV_DIR}/${LV_ELEM}" | awk 'NR>1{print $NF}')"
       if [[ "${LV_ELEM_FS}" == "${LV_ACT_FS}" ]]
       then
         LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_PREFIX}${LV_ELEM}"
       fi
-    done
+    done <<< "$(ls -1A "${LV_DIR}/")"
   else
-    ## possibly use "shopt -s dotglob"
-    for LV_ELEM in $(ls -1Ad "$@")
+    while read -r LV_ELEM
     do
       LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_ELEM}"
-    done
+    done <<< "$(ls -1Ad "$@")"
   fi
   IFS="${LV_IFS_ORIG}"
 
