@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2012,SC2013
+# shellcheck disable=SC2012
 ## There are currently a number of open ShellCheck messages of WARNING and INFO
 ## level for the messagee-codes SC2012, SC2013, SC2044 and SC2045.
 ## These are going to be removed step by step. To allow automatic code
@@ -1231,13 +1231,13 @@ vit() {
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${ORACLE_HOME}/network/admin/tnsnames.ora"
   fi
-  for LV_FILE in $(grep -v -e '^[[:space:]]*$' -e '^[ ]*#' -e '^[*]:' /etc/oratab 2>/dev/null | awk -F: '{printf("%s/network/admin/tnsnames.ora\n", $2);}' | sort -u)
+  while read -r LV_FILE
   do
     if [[ -e "${LV_FILE}" ]]
     then
       LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${LV_FILE}"
     fi
-  done
+  done <<< "$(grep -v -e '^[[:space:]]*$' -e '^[ ]*#' -e '^[*]:' /etc/oratab 2>/dev/null | awk -F: '{printf("%s/network/admin/tnsnames.ora\n", $2);}' | sort -u)"
   if [[ "${#LV_FILE_ARR[@]}" -eq 0 ]]
   then
     echo "Keine tnsnames.ora gefunden."
@@ -1276,13 +1276,13 @@ vil() {
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="/etc/listener.ora"
   fi
-  for LV_FILE in $(grep -v -e '^[[:space:]]*$' -e '^[ ]*#' -e '^[*]:' /etc/oratab 2>/dev/null | awk -F: '{printf("%s/network/admin/listener.ora\n", $2);}' | sort -u)
+  while read -r LV_FILE
   do
     if [[ -e "${LV_FILE}" ]]
     then
       LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${LV_FILE}"
     fi
-  done
+  done <<< "$(grep -v -e '^[[:space:]]*$' -e '^[ ]*#' -e '^[*]:' /etc/oratab 2>/dev/null | awk -F: '{printf("%s/network/admin/listener.ora\n", $2);}' | sort -u)"
   if [[ -f ${ORACLE_HOME}/network/admin/listener.ora ]]
   then
     if ! in_list "${ORACLE_HOME}/network/admin/listener.ora" "${LV_FILE_ARR[@]}"
@@ -1834,15 +1834,23 @@ get_oracle_home_owner() {
 }
 list_homes() {
   local LV_ALIAS_TABLE LV_ORA_INSTLOC_LIST
-  LV_ORA_INSTLOC_LIST="$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u)"
-  if [[ -n "${LV_ORA_INSTLOC_LIST}" ]]
+  while read -r LV_ORA_INSTLOC_ELEM
+  do
+    LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
+  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u)"
+  if [[ "${#LV_ORA_INSTLOC_LIST[@]}" -gt 0 ]]
   then
     local LV_ORA_INVENTORY_LIST
-    # shellcheck disable=SC2046 # the "$(ls -1 ...)" command must not be quoted, it contains multiple filenames
-    # shellcheck disable=SC2086 # the variable "LV_ORA_INSTLOC_LIST" must not be quoted, it contains multiple filenames
-    LV_ORA_INVENTORY_LIST=$(awk -F= '/inventory_loc/{printf("%s/ContentsXML/inventory.xml\n", $2)}' $(ls -1 ${LV_ORA_INSTLOC_LIST} 2>/dev/null) 2>/dev/null | sort -u)
+    for LV_INSTLOC_ELEM in "${LV_ORA_INSTLOC_LIST[@]}"
+    do
+      LV_ORA_INVENTORY_ELEM="$(awk -F= '/inventory_loc/{printf("%s/ContentsXML/inventory.xml\n", $2)}' "${LV_INSTLOC_ELEM}" 2>/dev/null | sort -u)"
+      if ! in_list "${LV_ORA_INVENTORY_ELEM}" "${LV_ORA_INVENTORY_LIST[@]}"
+      then
+        LV_ORA_INVENTORY_LIST[${#LV_ORA_INVENTORY_LIST[@]}]="${LV_ORA_INVENTORY_ELEM}"
+      fi
+    done
     # shellcheck disable=SC2086 # the variable "LV_ORA_INVENTORY" must not be quoted, it contains multiple filenames
-    for LV_DUMMY_HOME in $(awk '/<HOME /{split($0, a, " "); for (b in a) {if (a[b] ~ "LOC") {split(a[b], c, "="); home_loc=c[2]} else if (a[b] ~ "NAME") {split(a[b], c, "="); home_name=c[2]} else if (a[b] ~ "REMOVED") {next;}}; gsub("\"", "", home_name); gsub("\"", "", home_loc); printf("OraHome_%s=%s\n", home_name, home_loc);}' ${LV_ORA_INVENTORY_LIST} 2>/dev/null)
+    while read -r LV_DUMMY_HOME
     do
       local LV_ORA_HOME_NAME="${LV_DUMMY_HOME%=*}"
       local LV_ORA_HOME_PATH="${LV_DUMMY_HOME#*=}"
@@ -1858,7 +1866,22 @@ list_homes() {
           shopt -s expand_aliases
         fi
       fi
-    done
+    done <<< "$(awk '/<HOME /{split($0, a, " ");
+                              for (b in a) {
+                                if (a[b] ~ "LOC") {
+                                  split(a[b], c, "=");
+                                  home_loc=c[2]
+                                } else if (a[b] ~ "NAME") {
+                                  split(a[b], c, "=");
+                                  home_name=c[2]
+                                } else if (a[b] ~ "REMOVED") {
+                                  next;
+                                }
+                              };
+                              gsub("\"", "", home_name);
+                              gsub("\"", "", home_loc);
+                              printf("OraHome_%s=%s\n", home_name, home_loc);
+                             }' "${LV_ORA_INVENTORY_LIST[@]}" 2>/dev/null | sort -u)"
   fi
   echo "${LV_ALIAS_TABLE}" | grep -v "^[[:space:]]*$"
 }
