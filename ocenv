@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2012
 ## There are currently a number of open ShellCheck messages of WARNING and INFO
 ## level for the messagee-codes SC2012, SC2013, SC2044 and SC2045.
 ## These are going to be removed step by step. To allow automatic code
@@ -1075,6 +1074,7 @@ crsstat(){
 }
 unalias llh 2>/dev/null
 llh() {
+  # shellcheck disable=2012 # find on AIX does not have "-ls" option
   ls -lA "$@" 2>/dev/null | awk '
     {
       if (NR == 1 && $1 == "total") {
