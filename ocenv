@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-## There are currently a number of open ShellCheck messages of WARNING and INFO
-## level for the messagee-codes SC2012, SC2013, SC2044 and SC2045.
-## These are going to be removed step by step. To allow automatic code
-## checking for Pull Requests, the known codes are here globally disabled as
-## a temporary solution
 
 # Bash script to configure the environment for an Oracle DBA
 # Copyright (C) 2021  OPITZ CONSULTING Deutschland GmbH
