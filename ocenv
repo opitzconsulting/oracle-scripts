@@ -557,7 +557,6 @@ is_rac() {
 detect_grid_infrastructure_and_asm() {
   local LV_IS_RAC
   LV_IS_RAC=$(is_rac && echo TRUE || echo FALSE);
-  local LV_ALIAS_TABLE
 
   GV_GRID_HOME=$(awk -F= '/crs_home/{print $2}' /etc/oracle/olr.loc 2>/dev/null)
   export GV_GRID_HOME
@@ -1828,7 +1827,7 @@ get_oracle_home_owner() {
   fi
 }
 list_homes() {
-  local LV_ALIAS_TABLE LV_ORA_INSTLOC_LIST
+  local LV_ORA_INSTLOC_LIST
   while read -r LV_ORA_INSTLOC_ELEM
   do
     LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
@@ -1853,7 +1852,7 @@ list_homes() {
       then
         generate_alias_for_home "${LV_ORA_HOME_NAME}" "${LV_ORA_HOME_PATH}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_ORA_HOME_NAME}"
-        LV_ALIAS_TABLE="$(printf "%s\n%-4s   %-10s   %-40s   %s\n"  "${LV_ALIAS_TABLE}" "home" "$(get_oracle_home_owner "${LV_ORA_HOME_PATH}")" "${LV_ORA_HOME_NAME}" "${LV_ORA_HOME_PATH}")"
+        printf "%-4s   %-10s   %-40s   %s\n"  "home" "$(get_oracle_home_owner "${LV_ORA_HOME_PATH}")" "${LV_ORA_HOME_NAME}" "${LV_ORA_HOME_PATH}"
         ## if this is the GRID_HOME, then activate this environment now
         if [[ -n "${GV_GRID_HOME}" && "${LV_ORA_HOME_PATH}" == "${GV_GRID_HOME}" ]]
         then
@@ -1878,7 +1877,6 @@ list_homes() {
                               printf("OraHome_%s=%s\n", home_name, home_loc);
                              }' "${LV_ORA_INVENTORY_LIST[@]}" 2>/dev/null | sort -u)"
   fi
-  echo "${LV_ALIAS_TABLE}" | grep -v "^[[:space:]]*$"
 }
 mystat() {
   local LV_TARGET="${1}"
@@ -1890,7 +1888,7 @@ mystat() {
   fi
 }
 list_sids() {
-  local LV_IS_RAC LV_ALIAS_TABLE LV_ASM_LINE_LIST LV_ASM_LINE_COUNT
+  local LV_IS_RAC LV_ASM_LINE_LIST LV_ASM_LINE_COUNT
   LV_IS_RAC=$(is_rac && echo TRUE || echo FALSE);
   LV_ASM_LINE_LIST=$(grep '^+ASM[0-9]*:[^:]\+:.*$' /etc/oratab 2>/dev/null)
   LV_ASM_LINE_COUNT="$(echo "${LV_ASM_LINE_LIST}" | wc -l)"
@@ -1926,7 +1924,7 @@ list_sids() {
       fi
       ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see comments with
       ## color-constant definitions at top of script)
-      LV_ALIAS_TABLE="$(printf "%s\n%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_ALIAS_TABLE}" "${LV_TYPE}" "${LV_PROC_USER}" "${GV_ASM_SID}" "${LV_COMMENT}" "${GV_GRID_HOME}")"
+      printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${GV_ASM_SID}" "${LV_COMMENT}" "${GV_GRID_HOME}"
       generate_alias_for_sid "${GV_ASM_SID}" "${GV_GRID_HOME}"
       GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${GV_ASM_SID}"
     fi
@@ -1966,7 +1964,7 @@ list_sids() {
           LV_PROC_USER="$(stat -c "%U" "${LV_ORA_HOME}")"
         fi
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        LV_ALIAS_TABLE="$(printf "%s\n%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_ALIAS_TABLE}" "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}")"
+        printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_INST_NAME}"
       fi
@@ -2000,7 +1998,7 @@ list_sids() {
       if [[ "${LV_SID}" != "-MGMTDB" ]]
       then
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        LV_ALIAS_TABLE="$(printf "%s\n%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_ALIAS_TABLE}" "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}")"
+        Lprintf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
@@ -2063,7 +2061,7 @@ list_sids() {
         LV_COMMENT="${GV_T_WHITE}(oratab)${GV_CCLR}"
       fi
       ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-      LV_ALIAS_TABLE="$(printf "%s\n%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_ALIAS_TABLE}" "${LV_TYPE}" "${LV_HOME_OWNER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}")"
+      printf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_HOME_OWNER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
       if [[ "${LV_TYPE}" != "asm" ]]
       then
         generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
@@ -2071,10 +2069,9 @@ list_sids() {
       fi
     fi
   done
-  echo "${LV_ALIAS_TABLE}" | grep -v "^[[:space:]]*$"
 }
 list_listener() {
-  local LV_ALIAS_TABLE LV_ORA_LSNR_HOME LV_ORA_LSNR_USER
+  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER
   # shellcheck disable=2009 # no pgrep on AIX
   LV_ORA_LSNR_LIST=$(ps -eo args | grep -E "tnslsnr[ ]+" | awk '{print $2}')
   for LV_ORA_LSNR_NAME in ${LV_ORA_LSNR_LIST}
@@ -2090,9 +2087,8 @@ list_listener() {
     fi
     generate_alias_for_listener "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
     GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_ORA_LSNR_NAME}"
-    LV_ALIAS_TABLE="$(printf "%s\n%-4s   %-10s   %-30s             %s\n"  "${LV_ALIAS_TABLE}" "lsnr" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}")"
+    printf "%-4s   %-10s   %-30s             %s\n"  "lsnr" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
   done
-  echo "${LV_ALIAS_TABLE}" | grep -v "^[[:space:]]*$"
 }
 clear_aliases() {
   local LV_ALL_ALIASES
