@@ -94,21 +94,20 @@ function PwdResolvePath {
 
 GV_TTY=$(tty -s; echo $?)
 
+if [[ -n "${BASH_SOURCE[0]}" ]]
+then
+  GV_SOURCED_SCRIPT="${BASH_SOURCE[0]}"
+fi
+if [[ -n "${GV_SOURCED_SCRIPT}" ]]
+then
+  GV_SOURCED_SCRIPT="$(${GC_CMD_READLINK} "${GV_SOURCED_SCRIPT}")"
+fi
+
 if [[ -f "${HOME}/.ocenvrc" ]]
 then
   # shellcheck disable=SC1091
   . "${HOME}/.ocenvrc"
 else
-  if [[ -n "${BASH_SOURCE[0]}" ]]
-  then
-    GV_SOURCED_SCRIPT="${BASH_SOURCE[0]}"
-  fi
-
-  if [[ -n "${GV_SOURCED_SCRIPT}" ]]
-  then
-    GV_SOURCED_SCRIPT="$(${GC_CMD_READLINK} "${GV_SOURCED_SCRIPT}")"
-  fi
-
   if [[ -f "${GV_SOURCED_SCRIPT}" ]]
   then
     GV_SCRIPT_DIR="$(dirname "${GV_SOURCED_SCRIPT}")"
