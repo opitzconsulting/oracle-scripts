@@ -241,6 +241,15 @@ Available commands:
     * asmdu     DiskUsage for ASM diskgroups
     * asmsql    spawns a subshell, defines ASM environment and calls SQL*Plus
     * crsstat   colorized and reformateted GI overview similar to "crsctl stat res -t"
+  == Oracle Cloud Infrastructure
+    * bkup_api_list_jobs
+                list the bkup_api jobs for the currently active environment
+                Parameter 1: Number of lines (optional)
+                Parameter 2: Type of job (DB|FULL|INCREMENTAL|KEEP|ARCH) (optional)
+    * bkup_api_last_job
+                show status of last executed bkup_api job for the currently
+                active environment
+                Parameter 1: Type of job (DB|FULL|INCREMENTAL|KEEP|ARCH)
   == Filesystems
     * edf       enhanced version of "df"
     * edu       enhanced version of "du"
@@ -1373,6 +1382,82 @@ rotate_file() {
     mv "${LV_SOURCE}" "${LV_TARGET}"
     echo "Original file renamed to \"${LV_SOURCE}.${LV_TIMESTAMP}\"." > "${LV_SOURCE}"
   fi
+}
+
+bkup_api_list_jobs () {
+  local P_LINE_COUNT="${1}"
+  local P_BACKUP_TYPE="${2}"
+  local LV_LINE_FILTER
+  if [[ -z "${GV_DB_UNIQUE_NAME}" ]]
+  then
+    echo "No DB environment set (GV_DB_UNIQUE_NAME is empty). Abort" 1>&2
+    return 1
+  fi
+  if [[ ! -x /var/opt/oracle/bkup_api/bkup_api ]]
+  then
+    echo "The BKUP_API (/var/opt/oracle/bkup_api/bkup_api) not found. Abort" 1>&2
+    return 1
+  fi
+  if [[ -z "${P_LINE_COUNT}" ]]
+  then
+    echo "listing last 1000 jobs" 1>&2
+    P_LINE_COUNT=1000
+  fi
+  #P_BACKUP_TYPE=DB|FULL|INCREMENTAL|KEEP|ARCH
+  case "${P_BACKUP_TYPE}" in
+    "DB")
+      LV_LINE_FILTER="/create-backup-/"
+    ;;
+    "FULL")
+      LV_LINE_FILTER="/create-backup-full/"
+    ;;
+    "INCREMENTAL")
+      LV_LINE_FILTER="/create-backup-incremental/"
+    ;;
+    "KEEP")
+      LV_LINE_FILTER="/create-backup-keep-forever/"
+    ;;
+    "ARCH")
+      LV_LINE_FILTER="/archivelog-backup/"
+    ;;
+    *)
+      LV_LINE_FILTER=""
+    ;;
+  esac
+  /var/opt/oracle/bkup_api/bkup_api --dbname=${GV_DB_UNIQUE_NAME} list jobs | awk -v cnt=10 'BEGIN{v_list_started=0} /^UUID/{v_list_started=1; v_head=$0} '${LV_LINE_FILTER}'{if (v_list_started==1) {v_buffer=v_buffer RS $0}} v_buffer~/(\n.*){'${P_LINE_COUNT}'}/{sub(/[^\n]*\n/,"",v_buffer)} END{print v_head; print v_buffer}'
+}
+bkup_api_last_job () {
+  local P_BACKUP_TYPE LV_UUID
+  P_BACKUP_TYPE="${1}"
+  if [[ -z "${GV_DB_UNIQUE_NAME}" ]]
+  then
+    echo "No DB environment set (GV_DB_UNIQUE_NAME is empty). Abort" 1>&2
+    return 1
+  fi
+  if [[ ! -x /var/opt/oracle/bkup_api/bkup_api ]]
+  then
+    echo "The BKUP_API (/var/opt/oracle/bkup_api/bkup_api) not found. Abort" 1>&2
+    return 1
+  fi
+  #P_BACKUP_TYPE=DB|FULL|INCREMENTAL|KEEP|ARCH
+  case "${P_BACKUP_TYPE}" in
+    "DB")
+    ;;
+    "FULL")
+    ;;
+    "INCREMENTAL")
+    ;;
+    "KEEP")
+    ;;
+    "ARCH")
+    ;;
+    *)
+      printf "\e[00;31mBackup type \"%s\" not supported, must be one of [DB|FULL|INCREMENTAL|KEEP|ARCH].\e[00m\n" "${P_BACKUP_TYPE}" 1>&2
+      return 1
+    ;;
+  esac
+  LV_UUID="$(bkup_api_list_jobs 1 "${P_BACKUP_TYPE}" | tail -n 1 | cut -f1 -d" ")"
+  /var/opt/oracle/bkup_api/bkup_api --dbname=${GV_DB_UNIQUE_NAME} --uuid="${LV_UUID}"
 }
 
 ################################################################################
