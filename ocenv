@@ -274,11 +274,11 @@ Available commands:
     * distribute_env
                 distributes environment file for the current user on all other
                 RAC nodes
+    * pull_ocenv_master
+                Downloads the current version of the script from the git repository
+                https://git.opitz-consulting.de/users/jas/repos/skriptsammlung
+                and puts it to "${GV_SOURCED_SCRIPT}".
 EOT
-##    * pull_ocenv_master
-##                Downloads the current version of the script from the git repository
-##                https://git.opitz-consulting.de/users/jas/repos/skriptsammlung
-##                and puts it to "${GV_SOURCED_SCRIPT}".
 }
 
 varhelp() {
