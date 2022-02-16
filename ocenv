@@ -1736,12 +1736,9 @@ get_sid_info() {
   export GV_ORACLE_SID_LC
 
   LV_ENV_VAR_QUERY="SET LINES 2000 PAGES 0 HEAD OFF FEEDBACK OFF
-WHENEVER SQLERROR EXIT 1;
-SELECT 'export GV_INSTANCE_STATUS=\"'||status||'\"' FROM v\$instance
-UNION ALL
-SELECT 'export GV_INSTANCE_STARTUP=\"'||TO_CHAR(startup_time, 'YYYY-MM-DD HH24:MI:SS')||'\"' FROM v\$instance;
-WHENEVER SQLERROR EXIT 2;
-"
+WHENEVER SQLERROR CONTINUE;
+SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_STATUS=\"'||status||'\"' FROM v\$instance;
+SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_STARTUP=\"'||TO_CHAR(startup_time, 'YYYY-MM-DD HH24:MI:SS')||'\"' FROM v\$instance;"
 
   if [[ "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
   then
@@ -1769,49 +1766,50 @@ BEGIN
   END IF;
 
   DBMS_OUTPUT.ENABLE;
-  DBMS_OUTPUT.PUT_LINE('export GV_IS_CDB='||v_cdb);
+  DBMS_OUTPUT.PUT_LINE('REAL'||'OUTPUT::export GV_IS_CDB='||v_cdb);
 END;
-/
-"
+/"
   fi
 
   LV_ENV_VAR_QUERY="${LV_ENV_VAR_QUERY}
-SELECT 'export GV_INSTANCE_DIAGNOSTIC_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'diagnostic_dest'
-UNION ALL
-SELECT 'export GV_INSTANCE_BDUMP_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'background_dump_dest'
-UNION ALL
-SELECT 'export GV_DB_UNIQUE_NAME=\"'||value||'\"' FROM v\$parameter WHERE name = 'db_unique_name';
+SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_DIAGNOSTIC_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'diagnostic_dest';
+SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_BDUMP_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'background_dump_dest';
+SELECT 'REAL'||'OUTPUT::export GV_DB_UNIQUE_NAME=\"'||value||'\"' FROM v\$parameter WHERE name = 'db_unique_name';
 -- If instance is only 'STARTED' then this statement will fail. That's ok, the variable is already set
 -- correctly in this case.
 WHENEVER SQLERROR CONTINUE;
 SELECT CASE
-         WHEN vi.status = 'MOUNTED' THEN 'export GV_INSTANCE_STATUS=\"'||vi.status||'\"'
-         ELSE 'export GV_INSTANCE_STATUS=\"'||vi.status||' ('||vd.open_mode||')\"'
+         WHEN vi.status = 'MOUNTED' THEN 'REAL'||'OUTPUT::export GV_INSTANCE_STATUS=\"'||vi.status||'\"'
+         ELSE 'REAL'||'OUTPUT::export GV_INSTANCE_STATUS=\"'||vi.status||' ('||vd.open_mode||')\"'
        END
-FROM v\$instance vi, v\$database vd"
+FROM v\$instance vi, v\$database vd;"
   if [[ "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
   then
     LV_ENV_VAR_QUERY="${LV_ENV_VAR_QUERY}
-UNION ALL
-SELECT 'export GV_DB_NAME='||name FROM v\$database
-UNION ALL
-SELECT 'export GV_DB_ID='||dbid FROM v\$database
-UNION ALL
-SELECT 'export GV_DB_LOG_MODE='||log_mode FROM v\$database
-UNION ALL
-SELECT 'export GV_DB_ROLE=\"'||database_role||'\"' FROM v\$database
-UNION ALL
-SELECT 'export GV_DB_FORCE_LOGGING=\"'||force_logging||'\"' FROM v\$database
-UNION ALL
-SELECT 'export GV_DB_FLASHBACK_ON=\"'||flashback_on||'\"' FROM v\$database"
+SELECT 'REAL'||'OUTPUT::export GV_DB_NAME='||name FROM v\$database;
+SELECT 'REAL'||'OUTPUT::export GV_DB_ID='||dbid FROM v\$database;
+SELECT 'REAL'||'OUTPUT::export GV_DB_LOG_MODE='||log_mode FROM v\$database;
+SELECT 'REAL'||'OUTPUT::export GV_DB_ROLE=\"'||database_role||'\"' FROM v\$database;
+SELECT 'REAL'||'OUTPUT::export GV_DB_FORCE_LOGGING=\"'||force_logging||'\"' FROM v\$database;
+SELECT 'REAL'||'OUTPUT::export GV_DB_FLASHBACK_ON=\"'||flashback_on||'\"' FROM v\$database;"
   else
-    LV_ENV_VAR_QUERY="${LV_ENV_VAR_QUERY};
-SELECT 'export GV_DB_NAME=+ASM' FROM dual"
+    LV_ENV_VAR_QUERY="${LV_ENV_VAR_QUERY}
+SELECT 'REAL'||'OUTPUT::export GV_DB_NAME=+ASM' FROM dual;"
   fi
 
-  LV_ENV_VAR_CMDS="$(exec_sql_data "${LV_ENV_VAR_QUERY}" 2>/dev/null)"
-  local LV_SQL_RET_CODE=$?
-  if [[ ${LV_SQL_RET_CODE} -eq 0 && -n "${LV_ENV_VAR_CMDS}" ]]
+  ## Dummy-Query at the end. Last query in "exec_sql_data" must not end with a ";"
+  LV_ENV_VAR_QUERY="${LV_ENV_VAR_QUERY}
+SELECT 'x' FROM dual"
+
+  set -o pipefail
+  if ! LV_ENV_VAR_CMDS="$(exec_sql_data "${LV_ENV_VAR_QUERY}" 2>/dev/null | grep "^REALOUTPUT::" | sed 's/^REALOUTPUT:://g')"
+  then
+    export GV_INSTANCE_STATUS=IDLE
+    unset GV_INSTANCE_STARTUP
+  fi
+  set +o pipefail
+
+  if [[ -n "${LV_ENV_VAR_CMDS}" ]]
   then
     eval "$(echo "${LV_ENV_VAR_CMDS}" | grep '^export')"
     # shellcheck disable=2153
