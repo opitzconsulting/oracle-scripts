@@ -621,6 +621,10 @@ myoraenv_simple() {
     echo "usage: myoraenv_simple <ORACLE_SID> <ORACLE_HOME> <TNS_ADMIN>"
     return 1
   fi
+  unset GV_DB_NAME                 2>/dev/null
+  unset GV_DB_UNIQUE_NAME          2>/dev/null
+  unset GV_DB_UNIQUE_NAME_LC       2>/dev/null
+  unset TNS_ADMIN                  2>/dev/null
   if [[ -n "${3}" ]]
   then
     export TNS_ADMIN="${3}"
@@ -639,7 +643,7 @@ myoraenv() {
     return 1
   fi
 
-  local LV_ORACLE_SID LV_ORACLE_HOME LV_TNS_ADMIN
+  local LV_ORACLE_SID LV_ORACLE_HOME LV_TNS_ADMIN LV_DB_NAME LV_DB_UNIQUE_NAME
 
   LV_ORACLE_SID="${1}";
   if [[ "${LV_ORACLE_SID}" == "${GV_ASM_SID}" ]]
@@ -649,6 +653,8 @@ myoraenv() {
   then
     LV_ORACLE_HOME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^ORACLE_HOME=" | cut -d"=" -f2)
     LV_TNS_ADMIN=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_ENV=TNS_ADMIN=" | cut -d"=" -f3)
+    LV_DB_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_DB_NAME=" | cut -d"=" -f2)
+    LV_DB_UNIQUE_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^DB_UNIQUE_NAME=" | cut -d"=" -f2)
   else
     LV_ORACLE_HOME=$(grep "^${LV_ORACLE_SID}:" /etc/oratab | cut -d":" -f2)
   fi
@@ -658,6 +664,15 @@ myoraenv() {
     return 1
   fi
   myoraenv_simple "${LV_ORACLE_SID}" "${LV_ORACLE_HOME}" "${LV_TNS_ADMIN}"
+  if [[ -n "${LV_DB_NAME}" ]]
+  then
+    GV_DB_NAME="${LV_DB_NAME}"
+  fi
+  if [[ -n "${LV_DB_UNIQUE_NAME}" ]]
+  then
+    GV_DB_UNIQUE_NAME="${LV_DB_UNIQUE_NAME}"
+    GV_DB_UNIQUE_NAME_LC="$(echo "${GV_DB_UNIQUE_NAME}" | to_lower)"
+  fi
 }
 get_cs_db_unique_name_from_gi() {
   if [[ -z "${1}" ]]
@@ -1725,8 +1740,6 @@ get_sid_info() {
   local LV_ADR_INST_TYPE
   unset GV_INSTANCE_STATUS    2>/dev/null
   unset GV_INSTANCE_STARTUP   2>/dev/null
-  unset GV_DB_NAME            2>/dev/null
-  unset GV_DB_UNIQUE_NAME     2>/dev/null
   unset GV_DB_ID              2>/dev/null
   unset GV_DB_LOG_MODE        2>/dev/null
   unset GV_DB_ROLE            2>/dev/null
@@ -1844,31 +1857,34 @@ sta() {
   echo "INSTANCE STATUS     : ${GV_INSTANCE_STATUS}"
   # shellcheck disable=2153
   echo "INSTANCE START TIME : ${GV_INSTANCE_STARTUP}"
-  if [[ -n "${GV_DB_NAME}" && "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
+  unset GV_PDB_LIST
+  if [[ "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
   then
-    echo "DB NAME             : ${GV_DB_NAME}"
-    echo "DB UNIQUE NAME      : ${GV_DB_UNIQUE_NAME}"
-    echo "DB ID               : ${GV_DB_ID}"
-    echo "DB LOGGING MODE     : ${GV_DB_LOG_MODE}"
-    echo "DB ROLE             : ${GV_DB_ROLE}"
-    echo "DB FORCE LOGGING    : ${GV_DB_FORCE_LOGGING}"
-    echo "DB FLASHBACK ON     : ${GV_DB_FLASHBACK_ON}"
-    echo "DB is CDB           : ${GV_IS_CDB}"
-    if [[ "${GV_IS_CDB}" == "YES" ]]
+    if [[ -n "${GV_DB_NAME}" || -n "${GV_DB_NAME}" ]]
     then
-      echo "PDBs"
-      LV_PDB_STRING=$(list_pdbs)
-      unset GV_PDB_LIST
-      for LV_PDB in ${LV_PDB_STRING}
-      do
-        GV_PDB_LIST[${#GV_PDB_LIST[@]}]="${LV_PDB}"
-      done
-      echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
-    else
-      unset GV_PDB_LIST
+      echo "DB NAME             : ${GV_DB_NAME}"
+      echo "DB UNIQUE NAME      : ${GV_DB_UNIQUE_NAME}"
     fi
-  else
-    unset GV_PDB_LIST
+    if [[ -n "${GV_DB_ID}" ]]
+    then
+      echo "DB ID               : ${GV_DB_ID}"
+      echo "DB LOGGING MODE     : ${GV_DB_LOG_MODE}"
+      echo "DB ROLE             : ${GV_DB_ROLE}"
+      echo "DB FORCE LOGGING    : ${GV_DB_FORCE_LOGGING}"
+      echo "DB FLASHBACK ON     : ${GV_DB_FLASHBACK_ON}"
+      echo "DB is CDB           : ${GV_IS_CDB}"
+      if [[ "${GV_IS_CDB}" == "YES" ]]
+      then
+        echo "PDBs"
+        LV_PDB_STRING=$(list_pdbs)
+        unset GV_PDB_LIST
+        for LV_PDB in ${LV_PDB_STRING}
+        do
+          GV_PDB_LIST[${#GV_PDB_LIST[@]}]="${LV_PDB}"
+        done
+        echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+      fi
+    fi
   fi
   echo "================================="
 }
@@ -1884,10 +1900,21 @@ generate_alias_for_sid() {
   LV_ORA_HOME="$2"
   LV_TNS_ADMIN="$3"
   LV_SID_LC="$(echo "$LV_SID" | to_lower)"
-  # shellcheck disable=2139,2086
-  alias ${LV_SID}="clroraenv; myoraenv_simple '${LV_SID}' '${LV_ORA_HOME}' '${LV_TNS_ADMIN}'; sta"
-  # shellcheck disable=2139,2086
-  alias ${LV_SID_LC}="clroraenv; myoraenv_simple '${LV_SID}' '${LV_ORA_HOME}' '${LV_TNS_ADMIN}'; sta"
+  ## If GV_GRID_HOME is set, then Grid Infrastructure is assumed to be running
+  ## In this case, myoraenv will read basic information from there, even if
+  ## get_sid_info cannot read it from the instance (e.g. because it's not running)
+  if [[ -n "${GV_GRID_HOME}" ]]
+  then
+    # shellcheck disable=2139,2086
+    alias ${LV_SID}="clroraenv; myoraenv '${LV_SID}'; sta"
+    # shellcheck disable=2139,2086
+    alias ${LV_SID_LC}="clroraenv; myoraenv '${LV_SID}'; sta"
+  else
+    # shellcheck disable=2139,2086
+    alias ${LV_SID}="clroraenv; myoraenv_simple '${LV_SID}' '${LV_ORA_HOME}' '${LV_TNS_ADMIN}'; sta"
+    # shellcheck disable=2139,2086
+    alias ${LV_SID_LC}="clroraenv; myoraenv_simple '${LV_SID}' '${LV_ORA_HOME}' '${LV_TNS_ADMIN}'; sta"
+  fi
 }
 generate_alias_for_listener() {
   local LV_ORA_LSNR_NAME=$1
