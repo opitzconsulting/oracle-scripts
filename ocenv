@@ -2109,7 +2109,7 @@ list_sids() {
       if [[ "${LV_SID}" != "-MGMTDB" ]]
       then
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        Lprintf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
+        printf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
