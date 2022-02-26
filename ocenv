@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2022-02-09"
+GV_OCENV_VERSION="2022-02-23"
 
 ###############################################################################
 ## Environment support homogenization
@@ -882,7 +882,7 @@ asmdu() {
 
   typeset LV_DG_LIST LV_LIST_SUBDIRS
   # Manage parameters
-  if [[ -z "${LV_BASEDIR}" ]]
+  if [[ -z "${LV_BASEDIR%/}" ]]
   then # No directory provided, will check all the DG
     LV_DG_LIST=$(asmcmd lsdg | grep -v State | awk '{print $NF}' | sed s'/\///')
     LV_LIST_SUBDIRS="No" # Do not show the subdirectories details if no directory is specified
@@ -890,6 +890,8 @@ asmdu() {
     LV_DG_LIST=$(echo "${LV_BASEDIR}" | sed s'/\/.*$//g')
     LV_LIST_SUBDIRS="YES" # Show the subdirectories details if directory is specified
   fi
+
+  LV_DG_LIST="$(echo "${LV_DG_LIST}" | tr '\n' ' ')"
 
   # Show DG overview
   asmcmd lsdg | sed s'/\/$//' | awk -v DG_LIST="${LV_DG_LIST}" -v W="${LC_WARNING}" -v C="${LC_CRITICAL}" '
@@ -2107,7 +2109,7 @@ list_sids() {
       if [[ "${LV_SID}" != "-MGMTDB" ]]
       then
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        Lprintf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
+        printf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_SID}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
