@@ -1896,6 +1896,22 @@ generate_alias_for_home() {
   # shellcheck disable=2139,2086
   alias ${LV_ORA_HOME_NAME}="clroraenv; set_ora_home_env '${LV_ORA_HOME_PATH}'; export ORACLE_SID='${LV_ORA_HOME_NAME}'"
 }
+generate_alias_for_dbuniquename() {
+  local LV_DB_UNIQUE_NAME LV_DB_UNIQUE_NAME_LC
+  LV_DB_UNIQUE_NAME="$1"
+  LV_DB_UNIQUE_NAME_LC="$(echo "$LV_DB_UNIQUE_NAME" | to_lower)"
+  LV_SID="$2"
+  ## If GV_GRID_HOME is set, then Grid Infrastructure is assumed to be running
+  ## In this case, myoraenv will read basic information from there, even if
+  ## get_sid_info cannot read it from the instance (e.g. because it's not running)
+  if [[ -n "${GV_GRID_HOME}" ]]
+  then
+    # shellcheck disable=2139,2086
+    alias ${LV_DB_UNIQUE_NAME}="clroraenv; myoraenv '${LV_SID}'; sta"
+    # shellcheck disable=2139,2086
+    alias ${LV_DB_UNIQUE_NAME_LC}="clroraenv; myoraenv '${LV_SID}'; sta"
+  fi
+}
 generate_alias_for_sid() {
   local LV_SID LV_ORA_HOME LV_TNS_ADMIN LV_SID_LC
   LV_SID="$1"
@@ -2077,6 +2093,7 @@ list_sids() {
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
         printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
+        generate_alias_for_dbuniquename "${LV_DB_UNIQUE_NAME}" "${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_INST_NAME}"
       fi
     done
