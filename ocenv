@@ -2137,13 +2137,9 @@ list_sids() {
     then
       typeset LV_DB_RESOURCE_LIST LV_ENV_VARS
       typeset -l LV_SID_LOWER=${LV_SID}
-      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "ora.${LV_SID_LOWER}.db" -p -n "$(hostname | cut -d. -f1)" | awk -F= '/ORACLE_HOME=/{printf("local LV_GRID_ORA_HOME=%s\n", $2)}')"
-      eval "${LV_ENV_VARS}"
-      if [[ "${LV_GRID_ORA_HOME}" == "${LV_ORA_HOME}" ]]
+      if alias "${LV_SID_LOWER}" 1>/dev/null 2>&1
       then
-        # This /etc/oratab entry is a dummy-entry for a GridInfrastructure controlled
-        # database. In a RAC this is irrelevant, in Oracle Restart this was already
-        # found above. Therefore we ignore this and continue with the next oratab entry.
+        # We already created an alias for this SID (or DB_UNIQUE_NAME) -> ignore
         continue
       fi
     fi
