@@ -2202,19 +2202,13 @@ list_listener() {
   done
 }
 clear_aliases() {
-  local LV_ALL_ALIASES
-  for LV_ALIAS in $(alias | awk -F"=" '{print $1}' | sort -u)
-  do
-    LV_ALL_ALIASES[${#LV_ALL_ALIASES[@]}]="${LV_ALIAS}"
-  done
-
   local LV_CLEARED_ALIASES
   local LV_ALIAS_LC
   for LV_ALIAS in "${GV_ALIAS_LIST[@]}"
   do
     if ! in_list "${LV_ALIAS}" "${LV_CLEARED_ALIASES[@]}"
     then
-      if in_list "${LV_ALIAS}" "${LV_ALL_ALIASES[@]}"
+      if alias "${LV_ALIAS}" 1>/dev/null 2>&1
       then
         if ! unalias "${LV_ALIAS}" 2>/dev/null
         then
@@ -2227,7 +2221,7 @@ clear_aliases() {
     LV_ALIAS_LC=$(echo "${LV_ALIAS}" | to_lower)
     if ! in_list "${LV_ALIAS_LC}" "${LV_CLEARED_ALIASES[@]}"
     then
-      if in_list "${LV_ALIAS_LC}" "${LV_ALL_ALIASES[@]}"
+      if alias "${LV_ALIAS_LC}" 1>/dev/null 2>&1
       then
         if ! unalias "${LV_ALIAS_LC}" 2>/dev/null
         then
