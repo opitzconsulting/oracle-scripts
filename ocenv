@@ -2168,7 +2168,7 @@ list_sids() {
         else
           LV_TYPE="unkn"
         fi
-	## "dummy" format codes, to prevent problems with formatting in following printf
+      	## "dummy" format codes, to prevent problems with formatting in following printf
         LV_COMMENT="${GV_T_WHITE}(oratab)${GV_CCLR}"
       fi
       ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
