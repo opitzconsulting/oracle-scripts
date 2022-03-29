@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2022-02-23"
+GV_OCENV_VERSION="2022-03-28"
 
 ###############################################################################
 ## Environment support homogenization
@@ -1896,6 +1896,22 @@ generate_alias_for_home() {
   # shellcheck disable=2139,2086
   alias ${LV_ORA_HOME_NAME}="clroraenv; set_ora_home_env '${LV_ORA_HOME_PATH}'; export ORACLE_SID='${LV_ORA_HOME_NAME}'"
 }
+generate_alias_for_dbuniquename() {
+  local LV_DB_UNIQUE_NAME LV_DB_UNIQUE_NAME_LC
+  LV_DB_UNIQUE_NAME="$1"
+  LV_DB_UNIQUE_NAME_LC="$(echo "$LV_DB_UNIQUE_NAME" | to_lower)"
+  LV_SID="$2"
+  ## If GV_GRID_HOME is set, then Grid Infrastructure is assumed to be running
+  ## In this case, myoraenv will read basic information from there, even if
+  ## get_sid_info cannot read it from the instance (e.g. because it's not running)
+  if [[ -n "${GV_GRID_HOME}" ]]
+  then
+    # shellcheck disable=2139,2086
+    alias ${LV_DB_UNIQUE_NAME}="clroraenv; myoraenv '${LV_SID}'; sta"
+    # shellcheck disable=2139,2086
+    alias ${LV_DB_UNIQUE_NAME_LC}="clroraenv; myoraenv '${LV_SID}'; sta"
+  fi
+}
 generate_alias_for_sid() {
   local LV_SID LV_ORA_HOME LV_TNS_ADMIN LV_SID_LC
   LV_SID="$1"
@@ -2048,9 +2064,9 @@ list_sids() {
     for LV_RES in ${LV_DB_RESOURCE_LIST}
     do
       typeset LV_ENV_VARS
-      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "${LV_RES}" -p -n "$(hostname | cut -d. -f1)" | awk -F= '/^(USR_ORA_INST_NAME|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{if ($1 == "USR_ORA_ENV" && $2 == "TNS_ADMIN") {printf("typeset LV_TNS_ADMIN=%s\n", $3)} else if ($1 == "ORACLE_HOME") {printf("typeset LV_ORA_HOME=%s\n", $2)} else if ($1 == "USR_ORA_INST_NAME") {printf("typeset LV_INST_NAME=%s\n", $2);}}')"
+      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "${LV_RES}" -p | awk -v hn="$(hostname | cut -d. -f1)" -F= 'BEGIN{sid_set = 0} /^(DB_UNIQUE_NAME|USR_ORA_INST_NAME|USR_ORA_INST_NAME@SERVERNAME\(.*\)|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{if ($1 == "DB_UNIQUE_NAME") {printf("typeset LV_DB_UNIQUE_NAME=%s\n", $2)} else if ($1 == "USR_ORA_ENV" && $2 == "TNS_ADMIN") {printf("typeset LV_TNS_ADMIN=%s\n", $3)} else if ($1 == "ORACLE_HOME") {printf("typeset LV_ORA_HOME=%s\n", $2)} else if ($1 == "USR_ORA_INST_NAME" && $2 != "") {printf("typeset LV_INST_NAME=%s\n", $2);sid_set = 1;} else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {printf("typeset LV_INST_NAME=%s\n", $2);}}')"
       eval "${LV_ENV_VARS}"
-      if [[ -n "${LV_INST_NAME}" ]]
+      if [[ -n "${LV_ENV_VARS}" && -n "${LV_INST_NAME}" ]]
       then
         if alias "${LV_INST_NAME}" >/dev/null 2>&1
         then
@@ -2077,6 +2093,7 @@ list_sids() {
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
         printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
+        generate_alias_for_dbuniquename "${LV_DB_UNIQUE_NAME}" "${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_INST_NAME}"
       fi
     done
@@ -2137,13 +2154,9 @@ list_sids() {
     then
       typeset LV_DB_RESOURCE_LIST LV_ENV_VARS
       typeset -l LV_SID_LOWER=${LV_SID}
-      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "ora.${LV_SID_LOWER}.db" -p -n "$(hostname | cut -d. -f1)" | awk -F= '/ORACLE_HOME=/{printf("local LV_GRID_ORA_HOME=%s\n", $2)}')"
-      eval "${LV_ENV_VARS}"
-      if [[ "${LV_GRID_ORA_HOME}" == "${LV_ORA_HOME}" ]]
+      if alias "${LV_SID_LOWER}" 1>/dev/null 2>&1
       then
-        # This /etc/oratab entry is a dummy-entry for a GridInfrastructure controlled
-        # database. In a RAC this is irrelevant, in Oracle Restart this was already
-        # found above. Therefore we ignore this and continue with the next oratab entry.
+        # We already created an alias for this SID (or DB_UNIQUE_NAME) -> ignore
         continue
       fi
     fi
@@ -2168,7 +2181,7 @@ list_sids() {
         else
           LV_TYPE="unkn"
         fi
-	## "dummy" format codes, to prevent problems with formatting in following printf
+      	## "dummy" format codes, to prevent problems with formatting in following printf
         LV_COMMENT="${GV_T_WHITE}(oratab)${GV_CCLR}"
       fi
       ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
@@ -2202,19 +2215,13 @@ list_listener() {
   done
 }
 clear_aliases() {
-  local LV_ALL_ALIASES
-  for LV_ALIAS in $(alias | awk -F"=" '{print $1}' | sort -u)
-  do
-    LV_ALL_ALIASES[${#LV_ALL_ALIASES[@]}]="${LV_ALIAS}"
-  done
-
   local LV_CLEARED_ALIASES
   local LV_ALIAS_LC
   for LV_ALIAS in "${GV_ALIAS_LIST[@]}"
   do
     if ! in_list "${LV_ALIAS}" "${LV_CLEARED_ALIASES[@]}"
     then
-      if in_list "${LV_ALIAS}" "${LV_ALL_ALIASES[@]}"
+      if alias "${LV_ALIAS}" 1>/dev/null 2>&1
       then
         if ! unalias "${LV_ALIAS}" 2>/dev/null
         then
@@ -2227,7 +2234,7 @@ clear_aliases() {
     LV_ALIAS_LC=$(echo "${LV_ALIAS}" | to_lower)
     if ! in_list "${LV_ALIAS_LC}" "${LV_CLEARED_ALIASES[@]}"
     then
-      if in_list "${LV_ALIAS_LC}" "${LV_ALL_ALIASES[@]}"
+      if alias "${LV_ALIAS_LC}" 1>/dev/null 2>&1
       then
         if ! unalias "${LV_ALIAS_LC}" 2>/dev/null
         then
