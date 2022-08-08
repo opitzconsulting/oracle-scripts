@@ -1402,8 +1402,26 @@ rotate_file() {
 }
 
 bkup_api_list_jobs () {
-  local P_LINE_COUNT="${1}"
-  local P_BACKUP_TYPE="${2}"
+  local P_LINE_COUNT P_BACKUP_TYPE
+  local re='^[0-9]+$'
+  if [[ -n "${1}" ]]
+  then
+    if [[ "${1}" =~ $re ]]
+    then
+      P_LINE_COUNT="${1}"
+    else
+      P_BACKUP_TYPE="${1}"
+    fi
+  fi
+  if [[ -n "${2}" ]]
+  then
+    if [[ "${2}" =~ $re ]]
+    then
+      P_LINE_COUNT="${2}"
+    else
+      P_BACKUP_TYPE="${2}"
+    fi
+  fi
   local LV_LINE_FILTER
   if [[ -z "${GV_DB_UNIQUE_NAME}" ]]
   then
