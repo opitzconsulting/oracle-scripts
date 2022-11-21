@@ -2082,7 +2082,7 @@ list_homes() {
 }
 mystat() {
   local LV_TARGET="${1}"
-  if [[ "${GV_OS_TYPE}" == "AIX" ]]
+  if [[ "$(uname -s)" == "AIX" ]]
   then
     istat "${LV_TARGET}" | awk '/Owner/{split($2, v_a, "[()]"); print v_a[2]; }'
   else
