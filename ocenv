@@ -524,11 +524,15 @@ alias pmon='ps -ef | grep -w -E "ora_pmon_[a-zA-Z0-9]+"'
 [[ -n "$(which amon 2>/dev/null)" ]] && alias amon="\$(which amon) -l n"
 if [[ "${GV_OS_TYPE}" == "AIX" ]]
 then
-  export GV_PAGER=more
   alias psg='ps -ef | grep -v grep | grep '
 else
-  export GV_PAGER=less
   alias psg='ps aux | grep -v grep | grep --color=auto'
+fi
+if [[ -x "$(which less 2>/dev/null)" ]]
+then
+  export GV_PAGER=less
+else
+  export GV_PAGER=more
 fi
 alias via='${GV_PAGER} ${GV_INSTANCE_ALERT_LOG}'
 alias vio='${EDITOR} /etc/oratab'
@@ -1163,19 +1167,19 @@ llh() {
       }
       if ($1 != "total") {
         v_size = $5
-  v_unit = "B "
-  if ( v_size >= 1024 ) {
-    v_size = v_size / 1024
-    v_unit = "KB"
-    if ( v_size >= 1024 ) {
-      v_size = v_size / 1024
-      v_unit = "MB"
-      if ( v_size >= 1024 ) {
-        v_size = v_size / 1024
-        v_unit = "GB"
-      }
-    }
-  }
+        v_unit = "B "
+        if ( v_size >= 1024 ) {
+          v_size = v_size / 1024
+          v_unit = "KB"
+          if ( v_size >= 1024 ) {
+            v_size = v_size / 1024
+            v_unit = "MB"
+            if ( v_size >= 1024 ) {
+              v_size = v_size / 1024
+              v_unit = "GB"
+            }
+          }
+        }
         printf("%10s %4d %8s %-8s %7.2f %2s %3s %2s %5s %s\n", $1, $2, $3, $4, v_size, v_unit, $6, $7, $8, $9);
       }
     }'
@@ -1252,7 +1256,7 @@ edf() {
   local LV_THRESHOLD_CRIT=95
   local LV_THRESHOLD_WARN=85
 
-  if [[ "$(uname -s)" == "AIX" ]]
+  if [[ "$(uname -s)" == "AIX" ]] && ! (which df 2>/dev/null| grep -q "/opt/freeware/")
   then
     local LV_DF="df -Pg"
   else
@@ -2082,7 +2086,7 @@ list_homes() {
 }
 mystat() {
   local LV_TARGET="${1}"
-  if [[ "$(uname -s)" == "AIX" ]]
+  if [[ "$(uname -s)" == "AIX" ]] && ! (which stat 2>/dev/null| grep -q "/opt/freeware/")
   then
     istat "${LV_TARGET}" | awk '/Owner/{split($2, v_a, "[()]"); print v_a[2]; }'
   else
