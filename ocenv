@@ -642,7 +642,7 @@ set_ora_home_env() {
     ORACLE_BASE="$("${ORACLE_HOME}/bin/orabase")"
     export ORACLE_BASE
   fi
-  case "${GV_OS_TYPE}" in
+  case "$(uname -s)" in
     "Linux")
       export LD_LIBRARY_PATH=${ORACLE_HOME}/lib:${ORIGINAL_LD_LIBRARY_PATH_PRE_ENVLOAD}
     ;;
@@ -1252,7 +1252,7 @@ edf() {
   local LV_THRESHOLD_CRIT=95
   local LV_THRESHOLD_WARN=85
 
-  if [[ "${GV_OS_TYPE}" == "AIX" ]]
+  if [[ "$(uname -s)" == "AIX" ]]
   then
     local LV_DF="df -Pg"
   else
@@ -2082,7 +2082,7 @@ list_homes() {
 }
 mystat() {
   local LV_TARGET="${1}"
-  if [[ "${GV_OS_TYPE}" == "AIX" ]]
+  if [[ "$(uname -s)" == "AIX" ]]
   then
     istat "${LV_TARGET}" | awk '/Owner/{split($2, v_a, "[()]"); print v_a[2]; }'
   else
