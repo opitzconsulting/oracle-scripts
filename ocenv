@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2022-11-22"
+GV_OCENV_VERSION="2022-12-01"
 
 ###############################################################################
 ## Environment support homogenization
@@ -696,10 +696,15 @@ myoraenv() {
   elif [[ -n "${GV_GRID_HOME}" ]]
   then
     LV_ORACLE_HOME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^ORACLE_HOME=" | cut -d"=" -f2)
-    LV_TNS_ADMIN=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_ENV=TNS_ADMIN=" | cut -d"=" -f3)
-    LV_DB_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_DB_NAME=" | cut -d"=" -f2)
-    LV_DB_UNIQUE_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^DB_UNIQUE_NAME=" | cut -d"=" -f2)
-  else
+    if [[ -n "${LV_ORACLE_HOME}" ]]
+    then
+      LV_TNS_ADMIN=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_ENV=TNS_ADMIN=" | cut -d"=" -f3)
+      LV_DB_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_DB_NAME=" | cut -d"=" -f2)
+      LV_DB_UNIQUE_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^DB_UNIQUE_NAME=" | cut -d"=" -f2)
+    fi
+  fi
+  if [[ -z "${LV_ORACLE_HOME}" ]]
+  then
     LV_ORACLE_HOME=$(grep "^${LV_ORACLE_SID}:" /etc/oratab | cut -d":" -f2)
   fi
   if [[ -z "${LV_ORACLE_HOME}" ]]
