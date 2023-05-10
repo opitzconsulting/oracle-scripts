@@ -1527,7 +1527,7 @@ bkup_api_list_jobs () {
       LV_LINE_FILTER=""
     ;;
   esac
-  /var/opt/oracle/bkup_api/bkup_api --dbname="${GV_DB_UNIQUE_NAME}" list jobs | awk -v cnt=10 'BEGIN{v_list_started=0} /^UUID/{v_list_started=1; v_head=$0} '"${LV_LINE_FILTER}"'{if (v_list_started==1) {v_buffer=v_buffer RS $0}} v_buffer~/(\n.*){'${P_LINE_COUNT}'}/{sub(/[^\n]*\n/,"",v_buffer)} END{print v_head; print v_buffer}'
+  /var/opt/oracle/bkup_api/bkup_api --dbname="${GV_DB_UNIQUE_NAME}" list jobs | awk -v cnt=10 'BEGIN{v_list_started=0} /^UUID/{v_list_started=1; v_head=$0} '"${LV_LINE_FILTER}"'{if (v_list_started==1) {v_buffer=v_buffer RS $0}} v_buffer~/(\n.*){'"${P_LINE_COUNT}"'}/{sub(/[^\n]*\n/,"",v_buffer)} END{print v_head; print v_buffer}'
 }
 bkup_api_last_job () {
   local P_BACKUP_TYPE LV_UUID
@@ -1754,7 +1754,7 @@ get_lsnr_tracefile(){
     return 1
   fi
   local LV_LSNR_NAME_LOWER
-  LV_LSNR_NAME_LOWER="$(echo ${LV_LSNR_NAME} | to_lower)"
+  LV_LSNR_NAME_LOWER="$(echo "${LV_LSNR_NAME}" | to_lower)"
   local LV_LSNR_STATUS
   if LV_LSNR_STATUS="$(set_ora_home_env "${LV_LSNR_ORA_HOME}"; "${ORACLE_HOME}/bin/lsnrctl" status "${LV_LSNR_NAME}")"
   then
