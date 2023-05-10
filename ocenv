@@ -1628,6 +1628,8 @@ get_running_sids() {
 }
 ##############################################################################
 # Find out if database-instance is running by looking for ora_smon process
+# Oracle XE databases use "xe_smon" as process-prefix
+# Oracle 23c FREE databases use "db_smon" as process-prefix
 #
 # Prerequisites: None
 ##############################################################################
@@ -1635,7 +1637,7 @@ is_db_running() {
   local LV_ORACLE_SID
   LV_ORACLE_SID=$1
   # shellcheck disable=2009 # no pgrep on AIX
-  ps -ef | grep -q -E -w "(ora|xe)_smon_${LV_ORACLE_SID}"
+  ps -ef | grep -q -E -w "(ora|xe|db)_smon_${LV_ORACLE_SID}"
 }
 ##############################################################################
 # Find out if ASM-instance is running by looking for asm_smon process
@@ -2042,7 +2044,7 @@ list_homes() {
     then
       LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
     fi
-  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u)"
+  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
   if [[ "${#LV_ORA_INSTLOC_LIST[@]}" -gt 0 ]]
   then
     local LV_ORA_INVENTORY_LIST
