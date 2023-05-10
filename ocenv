@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2022-12-01"
+GV_OCENV_VERSION="2023-05-10"
 
 ###############################################################################
 ## Environment support homogenization
@@ -1527,7 +1527,7 @@ bkup_api_list_jobs () {
       LV_LINE_FILTER=""
     ;;
   esac
-  /var/opt/oracle/bkup_api/bkup_api --dbname="${GV_DB_UNIQUE_NAME}" list jobs | awk -v cnt=10 'BEGIN{v_list_started=0} /^UUID/{v_list_started=1; v_head=$0} '"${LV_LINE_FILTER}"'{if (v_list_started==1) {v_buffer=v_buffer RS $0}} v_buffer~/(\n.*){'${P_LINE_COUNT}'}/{sub(/[^\n]*\n/,"",v_buffer)} END{print v_head; print v_buffer}'
+  /var/opt/oracle/bkup_api/bkup_api --dbname="${GV_DB_UNIQUE_NAME}" list jobs | awk -v cnt=10 'BEGIN{v_list_started=0} /^UUID/{v_list_started=1; v_head=$0} '"${LV_LINE_FILTER}"'{if (v_list_started==1) {v_buffer=v_buffer RS $0}} v_buffer~/(\n.*){'"${P_LINE_COUNT}"'}/{sub(/[^\n]*\n/,"",v_buffer)} END{print v_head; print v_buffer}'
 }
 bkup_api_last_job () {
   local P_BACKUP_TYPE LV_UUID
@@ -1628,6 +1628,8 @@ get_running_sids() {
 }
 ##############################################################################
 # Find out if database-instance is running by looking for ora_smon process
+# Oracle XE databases use "xe_smon" as process-prefix
+# Oracle 23c FREE databases use "db_smon" as process-prefix
 #
 # Prerequisites: None
 ##############################################################################
@@ -1635,7 +1637,7 @@ is_db_running() {
   local LV_ORACLE_SID
   LV_ORACLE_SID=$1
   # shellcheck disable=2009 # no pgrep on AIX
-  ps -ef | grep -q -E -w "(ora|xe)_smon_${LV_ORACLE_SID}"
+  ps -ef | grep -q -E -w "(ora|xe|db)_smon_${LV_ORACLE_SID}"
 }
 ##############################################################################
 # Find out if ASM-instance is running by looking for asm_smon process
@@ -1752,7 +1754,7 @@ get_lsnr_tracefile(){
     return 1
   fi
   local LV_LSNR_NAME_LOWER
-  LV_LSNR_NAME_LOWER="$(echo ${LV_LSNR_NAME} | to_lower)"
+  LV_LSNR_NAME_LOWER="$(echo "${LV_LSNR_NAME}" | to_lower)"
   local LV_LSNR_STATUS
   if LV_LSNR_STATUS="$(set_ora_home_env "${LV_LSNR_ORA_HOME}"; "${ORACLE_HOME}/bin/lsnrctl" status "${LV_LSNR_NAME}")"
   then
@@ -2042,7 +2044,7 @@ list_homes() {
     then
       LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
     fi
-  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u)"
+  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
   if [[ "${#LV_ORA_INSTLOC_LIST[@]}" -gt 0 ]]
   then
     local LV_ORA_INVENTORY_LIST
