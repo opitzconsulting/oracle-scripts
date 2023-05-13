@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-05-10"
+GV_OCENV_VERSION="2023-05-12"
 
 ###############################################################################
 ## Environment support homogenization
@@ -140,7 +140,7 @@ then
   export ORIGINAL_LD_LIBRARY_PATH_PRE_ENVLOAD="${LD_LIBRARY_PATH}"
 
   export GV_INITIAL_VARS_SAVED=TRUE
-  GV_ENV_SPECIFIC_VARS=()
+  declare -a GV_ENV_SPECIFIC_VARS
 fi
 
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
@@ -620,6 +620,7 @@ clroraenv() {
   do
     unset "${LV_VAR_NAME}"
   done
+  # do not use "declare -a" since that would declare a local variable
   GV_ENV_SPECIFIC_VARS=()
   unset ORACLE_BASE
   unset ORACLE_HOME
@@ -2037,7 +2038,7 @@ get_oracle_home_owner() {
   fi
 }
 list_homes() {
-  local LV_ORA_INSTLOC_LIST
+  declare -a LV_ORA_INSTLOC_LIST
   while read -r LV_ORA_INSTLOC_ELEM
   do
     if [[ -n "${LV_ORA_INSTLOC_ELEM}" ]]
