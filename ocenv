@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-05-12"
+GV_OCENV_VERSION="2023-05-22"
 
 ###############################################################################
 ## Environment support homogenization
@@ -275,9 +275,9 @@ Available commands:
     * distribute_env
                 distributes environment file for the current user on all other
                 RAC nodes
-    * pull_ocenv_master
+    * pull_ocenv_main
                 Downloads the current version of the script from the git repository
-                https://git.opitz-consulting.de/users/jas/repos/skriptsammlung
+                https://github.com/opitzconsulting/oracle-scripts
                 and puts it to "${GV_SOURCED_SCRIPT}".
 EOT
 }
