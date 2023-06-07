@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-05-22"
+GV_OCENV_VERSION="2023-06-06"
 
 ###############################################################################
 ## Environment support homogenization
@@ -1274,19 +1274,34 @@ edf() {
       v_wrn="\033[01;33m";
       v_ok="\033[00;32m";
       v_clr="\033[0m";
+      v_maxelems=0;
     }
-    NR == 1 {
-      printf("%-35s  %10s  %10s  %10s  %8s  %s %s\n", $1, $2, $3, $4, $5, $6, $7)
+    {
+      a_lines[NR]=$0;
+      for (i = 1; i <= NF; i++) {
+        if (length($i) > a_lengths[i]) {
+          a_lengths[i] = length($i);
+        }
+      }
     }
-    NR > 1 {
-      v_used=$5 + 0;
-      if ( v_used > C )
-        v_color_used=v_crt
-      else if ( v_used > W )
-        v_color_used=v_wrn
-      else
-        v_color_used=v_ok;
-      printf("%-35s  %10s  %10s  %10s  %s%8s%s  %s %s\n", $1, $2, $3, $4, v_color_used, $5, v_clr, $6, $7)
+    END {
+      for (i = 1; i <= NR; i++) {
+        v_nf = split(a_lines[i], a_line);
+        if (i == 1) {
+          printf( "%-"a_lengths[1]"s  %"a_lengths[2]"s  %"a_lengths[3]"s  %"a_lengths[4]"s  %"a_lengths[5]"s  %s %s\n",
+                  a_line[1], a_line[2], a_line[3], a_line[4], a_line[5], a_line[6], a_line[7]);
+        } else {
+          v_used=a_line[5] + 0;
+          if ( v_used > C )
+            v_color_used=v_crt
+          else if ( v_used > W )
+            v_color_used=v_wrn
+          else
+            v_color_used=v_ok;
+          printf( "%-"a_lengths[1]"s  %"a_lengths[2]"s  %"a_lengths[3]"s  %"a_lengths[4]"s  %s%"a_lengths[5]"s%s  %s %s\n",
+                  a_line[1], a_line[2], a_line[3], a_line[4], v_color_used, a_line[5], v_clr, a_line[6], a_line[7]);
+        }
+      }
     }'
 }
 unalias gdf 2>/dev/null
