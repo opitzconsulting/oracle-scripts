@@ -1371,25 +1371,30 @@ gdf() {
 unalias vit 2>/dev/null
 vit() {
   unset LV_FILE_ARR
+  # widely unknown, this is a possible location
   if [[ -f ${HOME}/.tnsnames.ora ]]
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${HOME}/.tnsnames.ora"
   fi
-  if [[ -n "${TNS_ADMIN}" && -f ${TNS_ADMIN}/tnsnames.ora ]]
+  # TNS_ADMIN variable might be used to force a directory for SQLnet files
+  if [[ -n "${TNS_ADMIN}" && -f ${TNS_ADMIN}/tnsnames.ora ]] && ! in_list "${TNS_ADMIN}/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${TNS_ADMIN}/tnsnames.ora"
   fi
-  if [[ -f /etc/tnsnames.ora ]]
+  # /etc/tnsnames.ora is seldomly used
+  if [[ -f /etc/tnsnames.ora ]] && ! in_list "/etc/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="/etc/tnsnames.ora"
   fi
-  if [[ -f ${ORACLE_HOME}/network/admin/tnsnames.ora ]]
+  # most installations still use this default path
+  if [[ -f ${ORACLE_HOME}/network/admin/tnsnames.ora ]] && ! in_list "${ORACLE_HOME}/network/admin/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${ORACLE_HOME}/network/admin/tnsnames.ora"
   fi
+  # The following loop iterates over all ORACLE_HOMEs in the /etc/oratab
   while read -r LV_FILE
   do
-    if [[ -e "${LV_FILE}" ]]
+    if [[ -e "${LV_FILE}" ]] && ! in_list "${LV_FILE}" "${LV_FILE_ARR[@]}"
     then
       LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${LV_FILE}"
     fi
