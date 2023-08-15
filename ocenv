@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-06-06"
+GV_OCENV_VERSION="2023-08-14"
 
 ###############################################################################
 ## Environment support homogenization
@@ -930,12 +930,48 @@ asmcmd(){
 }
 unalias asmdu 2>/dev/null
 asmdu() {
+  while [[ "$#" -gt 0 ]]
+  do
+    case $1 in
+      "-mincreateage")
+        shift;
+        if [[ "$#" -gt 0 ]]
+        then
+          local LV_MINCAGE=$1
+        else
+          echo "Parameter \"-mincreateage\" requires value as next parameter." 1>&2
+          return 1
+        fi
+        shift;
+        ;;
+      "-minmodifyage")
+        shift;
+        if [[ "$#" -gt 0 ]]
+        then
+          local LV_MINMAGE=$1
+        else
+          echo "Parameter \"-minmodifyage\" requires value as next parameter." 1>&2
+          return 1
+        fi
+        shift;
+        ;;
+      *)
+        ## Removing leading "+" if present
+        typeset LV_BASEDIR="${1#+}"
+        shift;
+        ;;
+    esac
+  done
+  ## "${VARNAME+x}" returns "x" if variable VARNAME is set to anything, else it returns nothing
+  if [[ -n "${LV_MINCAGE+x}" && -n "${LV_MINMAGE+x}" ]]
+  then
+    echo "Providing both \"-mincreateage\" and \"-minmodifyage\" at the same time is not allowed." 1>&2
+    return 1
+  fi
   # Fred Denis -- denis@pythian.com -- 2016
   # Jan Schnackenberg - jan.schnackenberg@opitz-consulting.com
   # - If no parameter specified, show a du of each DiskGroup
   # - If a parameter, print a du of each subdirectory
-  ## Removing leading "+" if present
-  typeset LV_BASEDIR="${1#+}"
   ## Forcing trailing "/" regardless if present or not
   LV_BASEDIR="${LV_BASEDIR%/}/"
 
@@ -953,17 +989,18 @@ asmdu() {
   # Manage parameters
   if [[ -z "${LV_BASEDIR%/}" ]]
   then # No directory provided, will check all the DG
-    LV_DG_LIST=$(asmcmd lsdg | grep -v State | awk '{print $NF}' | sed s'/\///')
+    LV_DG_LIST=$(asmcmd lsdg | grep -v State | awk '{print $NF}' | sed 's|/||' )
     LV_LIST_SUBDIRS="No" # Do not show the subdirectories details if no directory is specified
   else
-    LV_DG_LIST=$(echo "${LV_BASEDIR}" | sed s'/\/.*$//g')
+    #
+    LV_DG_LIST="${LV_BASEDIR%%/*}"
     LV_LIST_SUBDIRS="YES" # Show the subdirectories details if directory is specified
   fi
 
   LV_DG_LIST="$(echo "${LV_DG_LIST}" | tr '\n' ' ')"
 
   # Show DG overview
-  asmcmd lsdg | sed s'/\/$//' | awk -v DG_LIST="${LV_DG_LIST}" -v W="${LC_WARNING}" -v C="${LC_CRITICAL}" '
+  asmcmd lsdg | sed 's|/$||' | awk -v DG_LIST="${LV_DG_LIST}" -v W="${LC_WARNING}" -v C="${LC_CRITICAL}" '
     BEGIN {
       COLOR_BEGIN = "\033[1;" ;
       COLOR_END = "\033[m" ;
@@ -1000,6 +1037,18 @@ asmdu() {
   # Subdirs info
   if [[ ${LV_LIST_SUBDIRS} == "YES" ]]
   then
+    ## "${VARNAME+x}" returns "x" if variable VARNAME is set to anything, else it returns nothing
+    if [[ -n "${LV_MINCAGE+x}" ]]
+    then
+      printf "%s\n\n     The following table only takes files into account that\n     have been created more than %d days ago.%s\n\n\n" "${GV_T_RED}" "${LV_MINCAGE}" "${GV_CCLR}"
+    fi
+
+    ## "${VARNAME+x}" returns "x" if variable VARNAME is set to anything, else it returns nothing
+    if [[ -n "${LV_MINMAGE+x}" ]]
+    then
+      printf "%s\n\n     The following table only takes files into account that\n     have been modified more than %d days ago.%s\n\n\n" "${GV_T_RED}" "${LV_MINMAGE}" "${GV_CCLR}"
+    fi
+
     exec_asm_sql_data "
       COL base_path FORMAT A100
       COL sub_item  FORMAT A50
@@ -1029,6 +1078,10 @@ asmdu() {
                        ) x,
                        (SELECT group_number gnum, file_number filnum, type ftype, bytes/1024/1024 mbytes, redundancy
                         FROM v\$asm_file
+                        WHERE (   ${LV_MINCAGE:-0} = 0
+                               OR creation_date < (SYSDATE - ${LV_MINCAGE:-0}))
+                          AND (   ${LV_MINMAGE:-0} = 0
+                               OR modification_date < (SYSDATE - ${LV_MINMAGE:-0}))
                         ORDER BY group_number, file_number
                        ) f
                   WHERE x.filnum != 4294967295
@@ -1318,25 +1371,30 @@ gdf() {
 unalias vit 2>/dev/null
 vit() {
   unset LV_FILE_ARR
+  # widely unknown, this is a possible location
   if [[ -f ${HOME}/.tnsnames.ora ]]
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${HOME}/.tnsnames.ora"
   fi
-  if [[ -n "${TNS_ADMIN}" && -f ${TNS_ADMIN}/tnsnames.ora ]]
+  # TNS_ADMIN variable might be used to force a directory for SQLnet files
+  if [[ -n "${TNS_ADMIN}" && -f ${TNS_ADMIN}/tnsnames.ora ]] && ! in_list "${TNS_ADMIN}/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${TNS_ADMIN}/tnsnames.ora"
   fi
-  if [[ -f /etc/tnsnames.ora ]]
+  # /etc/tnsnames.ora is seldomly used
+  if [[ -f /etc/tnsnames.ora ]] && ! in_list "/etc/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="/etc/tnsnames.ora"
   fi
-  if [[ -f ${ORACLE_HOME}/network/admin/tnsnames.ora ]]
+  # most installations still use this default path
+  if [[ -f ${ORACLE_HOME}/network/admin/tnsnames.ora ]] && ! in_list "${ORACLE_HOME}/network/admin/tnsnames.ora" "${LV_FILE_ARR[@]}"
   then
     LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${ORACLE_HOME}/network/admin/tnsnames.ora"
   fi
+  # The following loop iterates over all ORACLE_HOMEs in the /etc/oratab
   while read -r LV_FILE
   do
-    if [[ -e "${LV_FILE}" ]]
+    if [[ -e "${LV_FILE}" ]] && ! in_list "${LV_FILE}" "${LV_FILE_ARR[@]}"
     then
       LV_FILE_ARR[${#LV_FILE_ARR[@]}]="${LV_FILE}"
     fi
