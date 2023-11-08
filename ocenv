@@ -517,7 +517,7 @@ cat > "${GV_SQL_DIR}/login.sql" <<-"EOT"
   SET TAB        OFF
   SET TERMOUT     ON
 EOT
-if [[ -f ${GV_CUSTOM_LOGIN_SQL} ]]
+if [[ -f "${GV_CUSTOM_LOGIN_SQL}" ]]
 then
   echo "@${GV_CUSTOM_LOGIN_SQL}" >> "${GV_SQL_DIR}/login.sql"
 fi
