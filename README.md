@@ -1,6 +1,7 @@
 # OPITZ CONSULTING Oracle scripts
 
 ## Description
+
 This library contains scripts created and used by consultants from OPITZ CONSULTING Deutschland GmbH. They help us when working on our customers servers which are not allways configured in a homogenous way.
 
 In general these scripts should be licensed GPL-3.0 or later
@@ -8,6 +9,7 @@ In general these scripts should be licensed GPL-3.0 or later
 ## Scripts
 
 ### ocenv
+
 | License          | OS compatibility | Required Shell |
 | ---------------- | ---------------- | -------------- |
 | GPL-3.0 or later | Linux, AIX       | Bash >= 4.0    |
