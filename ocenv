@@ -2053,7 +2053,12 @@ check_compatible_param_value() {
     fi
   elif in_list "${GV_DB_VERSION:0:6}" "10.1.0" "10.2.0" "11.1.0" "11.2.0" "12.1.0" "12.2.0"
   then
-    if [[ "${GV_DB_VERSION:0:6}.0.0" == "${GV_DB_COMPATIBLE}" ]]
+    if [[ "${GV_DB_VERSION:0:6}" == "${GV_DB_COMPATIBLE}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_GREEN}"
+      GV_COMPAT_HINT=""
+      GV_COMPAT_MSG="Compatible parameter is set using 3 digits, which is sufficient."
+    elif [[ "${GV_DB_VERSION:0:6}.0.0" == "${GV_DB_COMPATIBLE}" ]]
     then
       GV_COMPAT_COLOR="${GV_B_GREEN}"
       GV_COMPAT_HINT=""
