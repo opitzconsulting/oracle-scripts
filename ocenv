@@ -240,6 +240,9 @@ Available commands:
                 in the ORACLE_HOME
     * sta       print short summary for active environment. Defines variables
                 for paths and files (alertlog, etc.)
+    * compatible_info
+                Shows additional information about the value of the compatible
+                parameter of the currently selected database
   == ASM and Grid Infrastructure
     * asmcmd    spawns a subshell, defines ASM environment and calls ASMCMD
                 will use "SYSDBA" as privilege if current user is not ASM owner
