@@ -624,6 +624,11 @@ clroraenv() {
   unset GV_DB_ROLE
   unset GV_DB_UNIQUE_NAME_LC
   unset GV_DB_UNIQUE_NAME
+  unset GV_DB_VERSION
+  unset GV_DB_COMPATIBLE
+  unset GV_COMPAT_COLOR
+  unset GV_COMPAT_HINT
+  unset GV_COMPAT_MSG
   unset GV_INSTANCE_ALERT_LOG
   unset GV_INSTANCE_BDUMP_DEST
   unset GV_INSTANCE_DIAGNOSTIC_DEST
@@ -2085,22 +2090,27 @@ check_compatible_param_value() {
   fi
 }
 compatible_info() {
-  echo "==================================================================================="
-  echo ""
-  echo "DB VERSION          : ${GV_DB_VERSION}"
-  echo "COMPATIBLE PARAMETER: ${GV_DB_COMPATIBLE}"
-  echo ""
-  echo "${GV_COMPAT_MSG}"
-  echo ""
-  echo ""
-  echo "For MOS ID detailing setting this parameter see:"
-  echo "  https://support.oracle.com/epmos/faces/DocContentDisplay?id=733987.1"
-  echo ""
-  echo ""
-  echo "For more details regarding setting the compatible parameter see:"
-  echo "  https://mikedietrichde.com/2019/04/17/when-and-how-should-you-change-compatible/"
-  echo ""
-  echo "==================================================================================="
+  if [[ -z "${ORACLE_SID}" || -z "${GV_DB_VERSION}" || -z "${GV_DB_COMPATIBLE}" || -z "${GV_COMPAT_MSG}" ]]
+  then
+    echo "${GV_B_YELLOW}The environment is not set for an instance. Or it was not set using ocenv.${GV_CCLR}"
+  else
+    echo "==================================================================================="
+    echo ""
+    echo "DB VERSION          : ${GV_DB_VERSION}"
+    echo "COMPATIBLE PARAMETER: ${GV_DB_COMPATIBLE}"
+    echo ""
+    echo "${GV_COMPAT_MSG}"
+    echo ""
+    echo ""
+    echo "For MOS ID detailing setting this parameter see:"
+    echo "  https://support.oracle.com/epmos/faces/DocContentDisplay?id=733987.1"
+    echo ""
+    echo ""
+    echo "For more details regarding setting the compatible parameter see:"
+    echo "  https://mikedietrichde.com/2019/04/17/when-and-how-should-you-change-compatible/"
+    echo ""
+    echo "==================================================================================="
+  fi
 }
 unalias sta 2>/dev/null
 sta() {
