@@ -1876,7 +1876,7 @@ vilsnr(){
   fi
 }
 fill_pdb_details_list () {
-  if [[ "${GV_DB_COMPATIBLE:0:6}" == "12.1.0" ]]
+  if [[ "${GV_DB_VERSION:0:6}" == "12.1.0" ]]
   then
     local LV_QUERY="SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| 'N/A' FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name"
   else
