@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-11-29"
+GV_OCENV_VERSION="2023-12-10"
 
 ###############################################################################
 ## Environment support homogenization
