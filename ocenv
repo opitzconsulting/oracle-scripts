@@ -31,7 +31,7 @@
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2023-11-08"
+GV_OCENV_VERSION="2023-11-29"
 
 ###############################################################################
 ## Environment support homogenization
@@ -240,6 +240,9 @@ Available commands:
                 in the ORACLE_HOME
     * sta       print short summary for active environment. Defines variables
                 for paths and files (alertlog, etc.)
+    * compatible_info
+                Shows additional information about the value of the compatible
+                parameter of the currently selected database
   == ASM and Grid Infrastructure
     * asmcmd    spawns a subshell, defines ASM environment and calls ASMCMD
                 will use "SYSDBA" as privilege if current user is not ASM owner
@@ -375,10 +378,12 @@ fi
 ## otherwise the width-formatting will not be correct
 GV_T_RED="$(printf "\033[00;31m")"     # Uses 8 invisible chars in printf format width
 GV_T_GREEN="$(printf "\033[00;32m")"   # Uses 8 invisible chars in printf format width
+# shellcheck disable=SC2034 # GV_T_YELLOW is currently unused
+GV_T_YELLOW="$(printf "\033[00;33m")"  # Uses 8 invisible chars in printf format width
 GV_T_WHITE="$(printf "\033[00;39m")"   # Uses 8 invisible chars in printf format width
 GV_B_RED="$(printf "\033[01;31m")"     # Uses 8 invisible chars in printf format width
-# shellcheck disable=SC2034 # GV_B_GREEN is currently unused
 GV_B_GREEN="$(printf "\033[01;32m")"   # Uses 8 invisible chars in printf format width
+GV_B_YELLOW="$(printf "\033[01;33m")"  # Uses 8 invisible chars in printf format width
 GV_B_WHITE="$(printf "\033[01;39m")"   # Uses 8 invisible chars in printf format width
 # shellcheck disable=SC2034 # GV_BOLD is currently unused
 GV_BOLD="$(printf "\033[1m")"          # Uses 4 invisible chars in printf format width
@@ -619,6 +624,11 @@ clroraenv() {
   unset GV_DB_ROLE
   unset GV_DB_UNIQUE_NAME_LC
   unset GV_DB_UNIQUE_NAME
+  unset GV_DB_VERSION
+  unset GV_DB_COMPATIBLE
+  unset GV_COMPAT_COLOR
+  unset GV_COMPAT_HINT
+  unset GV_COMPAT_MSG
   unset GV_INSTANCE_ALERT_LOG
   unset GV_INSTANCE_BDUMP_DEST
   unset GV_INSTANCE_DIAGNOSTIC_DEST
@@ -1908,13 +1918,16 @@ get_sid_info() {
   unset GV_DB_ROLE            2>/dev/null
   unset GV_DB_FORCE_LOGGING   2>/dev/null
   unset GV_DB_FLASHBACK_ON    2>/dev/null
+  unset GV_DB_COMPATIBLE      2>/dev/null
+  unset GV_DB_VERSION         2>/dev/null
   GV_ORACLE_SID_LC="$(echo "${ORACLE_SID}" | to_lower)"
   export GV_ORACLE_SID_LC
 
   LV_ENV_VAR_QUERY="SET LINES 2000 PAGES 0 HEAD OFF FEEDBACK OFF
 WHENEVER SQLERROR CONTINUE;
 SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_STATUS=\"'||status||'\"' FROM v\$instance;
-SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_STARTUP=\"'||TO_CHAR(startup_time, 'YYYY-MM-DD HH24:MI:SS')||'\"' FROM v\$instance;"
+SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_STARTUP=\"'||TO_CHAR(startup_time, 'YYYY-MM-DD HH24:MI:SS')||'\"' FROM v\$instance;
+SELECT 'REAL'||'OUTPUT::export GV_DB_VERSION=\"'||version||'\"' FROM v\$instance;"
 
   if [[ "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
   then
@@ -1951,6 +1964,7 @@ END;
 SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_DIAGNOSTIC_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'diagnostic_dest';
 SELECT 'REAL'||'OUTPUT::export GV_INSTANCE_BDUMP_DEST=\"'||value||'\"' FROM v\$parameter WHERE name = 'background_dump_dest';
 SELECT 'REAL'||'OUTPUT::export GV_DB_UNIQUE_NAME=\"'||value||'\"' FROM v\$parameter WHERE name = 'db_unique_name';
+SELECT 'REAL'||'OUTPUT::export GV_DB_COMPATIBLE=\"'||value||'\"' FROM v\$parameter WHERE name = 'compatible';
 -- If instance is only 'STARTED' then this statement will fail. That's ok, the variable is already set
 -- correctly in this case.
 WHENEVER SQLERROR CONTINUE;
@@ -1988,6 +2002,7 @@ SELECT 'x' FROM dual"
   if [[ -n "${LV_ENV_VAR_CMDS}" ]]
   then
     eval "$(echo "${LV_ENV_VAR_CMDS}" | grep '^export')"
+    check_compatible_param_value
     # shellcheck disable=2153
     GV_DB_UNIQUE_NAME_LC="$(echo "${GV_DB_UNIQUE_NAME}" | to_lower)"
     export GV_DB_UNIQUE_NAME_LC
@@ -2022,6 +2037,81 @@ print_pdb_listing() {
     echo "${LV_PDB_DETAIL}" | awk -F"|" '{printf("   %-15s %-10s %-10s %-19s %-10s\n", $1, $2, $3, $4, $5)}'
   done
 }
+check_compatible_param_value() {
+  GV_COMPAT_COLOR="${GV_B_RED}"
+  GV_COMPAT_HINT="         (exec \"compatible_info\" for details)"
+  GV_COMPAT_MSG="Compatible parameter could not be evaluated, defaulting to status \"error\"."
+  if in_list "${GV_DB_VERSION:0:6}" "18.0.0" "19.0.0" "21.0.0" "23.0.0"
+  then
+    if [[ "${GV_DB_VERSION:0:6}" == "${GV_DB_COMPATIBLE}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_GREEN}"
+      GV_COMPAT_HINT=""
+      GV_COMPAT_MSG="Compatible parameter is set as recommended."
+    elif [[ "${GV_DB_VERSION:0:3}" == "${GV_DB_COMPATIBLE:0:3}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_YELLOW}"
+      GV_COMPAT_HINT="         (exec \"compatible_info\" for details)"
+      GV_COMPAT_MSG="Compatible has correct base version, but does not follow the recommendation of \"<baseversion>.0.0\"."
+    elif [[ "${GV_DB_VERSION:0:3}" > "${GV_DB_COMPATIBLE:0:3}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_RED}"
+      GV_COMPAT_HINT="         (exec \"compatible_info\" for details)"
+      GV_COMPAT_MSG="Compatible parameter is to a version older than the one of this ORACLE_HOME."
+    fi
+  elif in_list "${GV_DB_VERSION:0:6}" "10.1.0" "10.2.0" "11.1.0" "11.2.0" "12.1.0" "12.2.0"
+  then
+    if [[ "${GV_DB_VERSION:0:6}" == "${GV_DB_COMPATIBLE}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_GREEN}"
+      GV_COMPAT_HINT=""
+      GV_COMPAT_MSG="Compatible parameter is set using 3 digits, which is sufficient."
+    elif [[ "${GV_DB_VERSION:0:6}.0.0" == "${GV_DB_COMPATIBLE}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_GREEN}"
+      GV_COMPAT_HINT=""
+      GV_COMPAT_MSG="Compatible parameter is set as recommended."
+    elif [[ "${GV_DB_VERSION}" == "${GV_DB_COMPATIBLE}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_GREEN}"
+      GV_COMPAT_HINT=""
+      GV_COMPAT_MSG="Compatible is set to exact version."
+    elif [[ "${GV_DB_VERSION:0:6}" == "${GV_DB_COMPATIBLE:0:6}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_YELLOW}"
+      GV_COMPAT_HINT="         (exec \"compatible_info\" for details)"
+      GV_COMPAT_MSG="Compatible has correct base version, but does not follow the recommendation of \"<majorversion>.<minorversion>.0.0.0\" or being equal to exact version."
+    elif [[ "${GV_DB_VERSION:0:3}" > "${GV_DB_COMPATIBLE:0:3}" ]]
+    then
+      GV_COMPAT_COLOR="${GV_B_RED}"
+      GV_COMPAT_HINT="         (exec \"compatible_info\" for details)"
+      GV_COMPAT_MSG="Compatible parameter is to a version older than the one of this ORACLE_HOME."
+    fi
+  fi
+}
+compatible_info() {
+  if [[ -z "${ORACLE_SID}" || -z "${GV_DB_VERSION}" || -z "${GV_DB_COMPATIBLE}" || -z "${GV_COMPAT_MSG}" ]]
+  then
+    echo "${GV_B_YELLOW}The environment is not set for an instance. Or it was not set using ocenv.${GV_CCLR}"
+  else
+    echo "==================================================================================="
+    echo ""
+    echo "DB VERSION          : ${GV_DB_VERSION}"
+    echo "COMPATIBLE PARAMETER: ${GV_DB_COMPATIBLE}"
+    echo ""
+    echo "${GV_COMPAT_MSG}"
+    echo ""
+    echo ""
+    echo "For MOS ID detailing setting this parameter see:"
+    echo "  https://support.oracle.com/epmos/faces/DocContentDisplay?id=733987.1"
+    echo ""
+    echo ""
+    echo "For more details regarding setting the compatible parameter see:"
+    echo "  https://mikedietrichde.com/2019/04/17/when-and-how-should-you-change-compatible/"
+    echo ""
+    echo "==================================================================================="
+  fi
+}
 unalias sta 2>/dev/null
 sta() {
   get_sid_info
@@ -2030,6 +2120,7 @@ sta() {
   echo "INSTANCE STATUS     : ${GV_INSTANCE_STATUS}"
   # shellcheck disable=2153
   echo "INSTANCE START TIME : ${GV_INSTANCE_STARTUP}"
+  echo "COMPATIBLE PARAMETER: ${GV_COMPAT_COLOR}${GV_DB_COMPATIBLE}${GV_CCLR}${GV_COMPAT_HINT}"
   unset GV_PDB_LIST
   if [[ "$(echo "${ORACLE_SID}" | cut -b1)" != "+" ]]
   then
