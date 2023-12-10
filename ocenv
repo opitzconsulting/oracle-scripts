@@ -1876,6 +1876,12 @@ vilsnr(){
   fi
 }
 fill_pdb_details_list () {
+  if [[ "${GV_DB_COMPATIBLE:0:6}" == "12.1.0" ]]
+  then
+    local LV_QUERY="SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| 'N/A' FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name"
+  else
+    local LV_QUERY="SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| DECODE(local_undo, 1, 'YES', 'NO') FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name"
+  fi
   unset GV_PDB_LIST_DETAILS
 
   if [[ "${GV_IS_CDB}" == "YES" ]]
@@ -1883,7 +1889,7 @@ fill_pdb_details_list () {
     while read -r LV_PDB_ELEM
     do
       GV_PDB_LIST_DETAILS[${#GV_PDB_LIST_DETAILS[@]}]="${LV_PDB_ELEM}"
-    done <<< "$(exec_sql_data "SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| DECODE(local_undo, 1, 'YES', 'NO') FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name")"
+    done <<< "$(exec_sql_data "${LV_QUERY}")"
   fi
 }
 list_pdbs() {
