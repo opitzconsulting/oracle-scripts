@@ -2405,7 +2405,12 @@ list_sids() {
   done
   ## Not running instances from oratab
   typeset LV_SID_LIST
-  LV_SID_LIST=$(grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' -e '^[*]:' /etc/oratab 2>/dev/null | sed 's/:.*$//g')
+  ## Exclude all lines that
+  ## - are empty
+  ## - contain only whitespace before a comment
+  ## - contain an "asterix" as ORACLE_SID (first entry in definition)
+  ## - contain the startup-flag "L" (can be used for TNS listener entries for startup-scripts)
+  LV_SID_LIST=$(grep -v -E -e '^[[:space:]]*$' -e '^[[:space:]]*#' -e '^[*]:' -e '^[^#:]+:[^:]+:L' /etc/oratab 2>/dev/null | sed 's/:.*$//g')
   for LV_SID in ${LV_SID_LIST}
   do
     if in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
@@ -2463,11 +2468,12 @@ list_sids() {
   done
 }
 list_listener() {
-  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER
+  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER LV_COMMENT
   # shellcheck disable=2009 # no pgrep on AIX
   LV_ORA_LSNR_LIST=$(ps -eo args | grep -E "tnslsnr[ ]+" | awk '{print $2}')
   for LV_ORA_LSNR_NAME in ${LV_ORA_LSNR_LIST}
   do
+    LV_COMMENT="(${GV_T_GREEN}up${GV_CCLR})"
     # shellcheck disable=2009 # no pgrep on AIX
     LV_ORA_LSNR_HOME="$(ps -eo args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+" | awk '{print $1}' | sed 's|/bin/tnslsnr||')"
     # shellcheck disable=2009 # no pgrep on AIX
@@ -2479,7 +2485,41 @@ list_listener() {
     fi
     generate_alias_for_listener "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
     GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_ORA_LSNR_NAME}"
-    printf "%-4s   %-10s   %-30s             %s\n"  "lsnr" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
+    printf "%-5s  %-10s   %-16s %-25s             %s\n"  "lsnr" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_COMMENT}" "${LV_ORA_LSNR_HOME}"
+  done
+
+  ## Read lines from /etc/oratab that contain the startup-flag "L"
+  ## and that are not commented
+  ## (can be used for TNS listener entries for startup-scripts)
+  LV_ORA_LSNR_LIST=$(grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' -e '^[*]:' /etc/oratab 2>/dev/null | grep -E -e '^[^#:]+:[^:]+:L' | sed 's/:.*$//g')
+  for LV_ORA_LSNR_NAME in ${LV_ORA_LSNR_LIST}
+  do
+    if in_list "${LV_ORA_LSNR_NAME}" "${GV_ALIAS_LIST[@]}"
+    then
+      continue
+    fi
+
+    typeset LV_ORATAB
+    LV_ORATAB="$(grep "^${LV_ORA_LSNR_NAME}:" /etc/oratab 2>/dev/null)"
+    LV_ORA_LSNR_HOME="$(echo "${LV_ORATAB}" | cut -d: -f2)"
+    LV_ORA_LSNR_USER="$(mystat "${LV_ORA_LSNR_HOME}")"
+
+    local LV_COMMENT="(oratab,${GV_T_RED}down${GV_CCLR})"
+    if [[ -x "${LV_ORA_LSNR_HOME}/bin/oracle" ]]
+    then
+      LV_TYPE="lsnr"
+    else
+      LV_TYPE="unkn"
+      ## "dummy" format codes, to prevent problems with formatting in following printf
+      LV_COMMENT="${GV_T_WHITE}(oratab)${GV_CCLR}"
+    fi
+    ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
+    printf "%-5s  %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_COMMENT}" "${LV_ORA_LSNR_HOME}"
+    if [[ "${LV_TYPE}" != "asm" ]]
+    then
+      generate_alias_for_listener "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
+      GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_ORA_LSNR_NAME}"
+    fi
   done
 }
 clear_aliases() {
