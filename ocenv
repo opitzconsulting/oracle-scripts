@@ -2570,7 +2570,7 @@ read_proxy() {
   printf "  HTTPS_PROXY=\"%s\"\n" "${HTTPS_PROXY}"
   printf "Press <ENTER> to keep this unchanged\n"
   printf "\n"
-  read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access git.opitz-consulting.com: " LV_PROXY_URL
+  read -r -p "Enter proxy (Format: [protocol://]<host>[:port]) to access internet servers: " LV_PROXY_URL
   if [[ -n "${LV_PROXY_URL}" ]]
   then
     export HTTPS_PROXY="${LV_PROXY_URL}"
