@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+## Allow debugging of script, including line-number information and runtime-information
+## We use "²" as delimiter, to allow separation of the output (e.g. in Excel)
+if [[ "$1" == --debug ]]
+then
+  export PS4='+ ²$(date "+%s.%N")²$LINENO²   '
+  set -x
+fi
+
 # Bash script to configure the environment for an Oracle DBA
 # Copyright (C) 2021  OPITZ CONSULTING Deutschland GmbH
 #
