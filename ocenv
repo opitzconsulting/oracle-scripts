@@ -1548,7 +1548,18 @@ grplogs() {
   fi
   local LV_REGEXP="$1"
   shift
-  awk -v V_SEARCH_REGEX="${LV_REGEXP}" '
+  (
+    for LV_FILENAME in "$@"
+    do
+      echo "STARTING_WITH_NEW_FILE ${LV_FILENAME}"
+      if [[ ${LV_FILENAME} =~ ^.*\.gz$ ]]
+      then
+        gunzip --to-stdout "${LV_FILENAME}"
+      else
+        cat "${LV_FILENAME}"
+      fi
+    done
+  ) | awk -v V_SEARCH_REGEX="${LV_REGEXP}" '
     function myprint(filename, linenumber, date, line)
     {
       printf("%-30s [%d][%s]: %s\n", filename, linenumber, date, line);
@@ -1565,16 +1576,19 @@ grplogs() {
       v_date_printed = 0;
       v_date_NR = -1;
     }
+    /^STARTING_WITH_NEW_FILE / {
+      v_filename=$2
+    }
     {
       if ( $0 ~ search_date_regex) {
         v_date = $0;
         v_date_printed = 0;
         v_date_NR = NR;
       } else if ( $0 ~ search_ora_regex ) {
-        myprint(FILENAME, NR, v_date, $0);
+        myprint(v_filename, NR, v_date, $0);
       }
     }
-  ' "$@"
+  '
 }
 rotate_file() {
   local LV_SOURCE="$1"
