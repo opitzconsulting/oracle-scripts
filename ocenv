@@ -428,21 +428,18 @@ if [[ "${GV_TTY}" -eq 0 ]]
 then
   # enclose unprintable parts in "\[" and "\]" to tell bash that they do not affect the lenght of the prompt
   ## Variables used in PS1 and PS2 have \[ and \] to correct width-calculation of prompt
-  GV_P_T_RED="$(printf "\[%s\]" "${GV_T_RED}")"
-  GV_P_T_GREEN="$(printf "\[%s\]" "${GV_T_GREEN}")"
-  GV_P_T_WHITE="$(printf "\[%s\]" "${GV_T_WHITE}")"
   GV_P_B_BOLD="\[${GV_B_WHITE}\]"
   GV_P_CCLR="\[${GV_CCLR}\]"
 
-  declare -a GV_ALIAS_LIST
-  declare -a GV_PDB_LIST
   export HISTTIMEFORMAT="%F %T "
   if [[ "${USER}" == "root" ]]
   then
-    export PS1="[${GV_P_T_RED}\u${GV_P_T_WHITE}@\h] [\w]\n${GV_P_B_BOLD}#${GV_P_CCLR} "
+    export PROMPT_COMMAND='LAST_RETCODE=$?; builtin echo -ne "\n[${GV_T_GREEN}${USER}${GV_T_WHITE}@${HOSTNAME}] [${PWD}]"; [ $LAST_RETCODE = 0 ] && builtin echo -ne "\e[$((COLUMNS - ${#LAST_RETCODE}))G\e[1;32m${LAST_RETCODE}\e[0m\n" || builtin echo -ne "\e[$((COLUMNS - ${#LAST_RETCODE}))G\e[31m${LAST_RETCODE}\e[0m\n"'
+    export PS1="${GV_P_B_BOLD}#${GV_P_CCLR} "
     export PS2="${GV_P_B_BOLD}#${GV_P_CCLR} "
   else
-    export PS1="[${GV_P_T_GREEN}\u${GV_P_T_WHITE}@\h] [${GV_P_T_RED}\${ORACLE_SID}${GV_P_T_WHITE}] [\w]\n${GV_P_B_BOLD}\$${GV_P_CCLR} "
+    export PROMPT_COMMAND='LAST_RETCODE=$?; builtin echo -ne "\n[${GV_T_GREEN}${USER}${GV_T_WHITE}@${HOSTNAME}] [${GV_T_RED}${ORACLE_SID}${GV_T_WHITE}] [${PWD}]"; [ $LAST_RETCODE = 0 ] && builtin echo -ne "\e[$((COLUMNS - ${#LAST_RETCODE}))G\e[1;32m${LAST_RETCODE}\e[0m\n" || builtin echo -ne "\e[$((COLUMNS - ${#LAST_RETCODE}))G\e[31m${LAST_RETCODE}\e[0m\n"'
+    export PS1="${GV_P_B_BOLD}\$${GV_P_CCLR} "
     export PS2="${GV_P_B_BOLD}\$${GV_P_CCLR} "
   fi
 
