@@ -307,6 +307,10 @@ Available commands:
                 Tries to download the current "master" version of the tpt-oracle
                 repository from GitHub and extract it to
                 "${GV_SQL_DIR}/sql/tpt"
+    * get_sqlzauberkasten_oracle
+                Tries to download the current "master" version of the SQL-Zauberkasten
+                repository from GitHub and extract it to
+                "${GV_SQL_DIR}/sql/zauberkasten"
   == Miscellaneous
     * envhelp   This help text
     * varhelp   information about all variables defined in this script
@@ -380,10 +384,15 @@ EOT
 set_sql_path_vars() {
   export SQLPATH="${ORIGINAL_SQLPATH_PRE_ENVLOAD}"
   export ORACLE_PATH="${ORIGINAL_ORACLE_PATH_PRE_ENVLOAD}"
-  if [[ -d "${GV_SQL_DIR}/tpt" ]]
+  if [[ -d "${GV_SQL_DIR}tpt/" ]]
   then
-    export SQLPATH="${GV_SQL_DIR}/tpt:${SQLPATH}"
-    export ORACLE_PATH="${GV_SQL_DIR}/tpt:${ORACLE_PATH}"
+    export SQLPATH="${GV_SQL_DIR}tpt/:${SQLPATH}"
+    export ORACLE_PATH="${GV_SQL_DIR}tpt/:${ORACLE_PATH}"
+  fi
+  if [[ -d "${GV_SQL_DIR}zauberkasten/sql/" ]]
+  then
+    export SQLPATH="${GV_SQL_DIR}zauberkasten/sql/:${SQLPATH}"
+    export ORACLE_PATH="${GV_SQL_DIR}zauberkasten/sql/:${ORACLE_PATH}"
   fi
   export SQLPATH="${GV_SQL_DIR}:${SQLPATH}"
   export ORACLE_PATH="${GV_SQL_DIR}:${ORACLE_PATH}"
@@ -559,6 +568,7 @@ then
   echo "@${GV_CUSTOM_LOGIN_SQL}" >> "${GV_SQL_DIR}/login.sql"
 fi
 
+GV_LS_CMD="$(which ls)"
 alias cdh='cd ${ORACLE_HOME}'
 unalias cdt 2>/dev/null
 # shellcheck disable=2164
@@ -911,21 +921,29 @@ pdbsqlint() {
   local LV_PDB_NAME LV_BINARY
   if [[ ${#GV_PDB_LIST[@]} -eq 0 ]]
   then
-    echo "Aktuell ausgewaehltes Environment enthaelt keine PDBs."
+    echo "Selected environment doesn't have PDBs."
     return 2
   elif [[ ${#GV_PDB_LIST[@]} -eq 1 ]]
   then
-    echo "Verbinde mit einziger PDB \"${GV_PDB_LIST[*]}\"."
+    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"."
     LV_PDB_NAME="${GV_PDB_LIST[*]}"
   elif [[ -z "${1}" || ( "${1}" != "sqlplus" && "${1}" != "sqlcl" ) ]]
   then
-    echo "Interne Methode, erster Parameter muss \"sqlplus\" oder \"sqlcl\" sein."
+    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"."
     return 1
   elif [[ -z "${2}" ]]
   then
-    echo "Bitte PDB-Namen als ersten Parameter angeben."
-    echo "Moegliche Namen sind:"
+    echo "Please provide PDB-name as first parameter."
+    echo "Possible names are:"
     echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    return 1
+  elif ! in_list "${2}" "${GV_PDB_LIST[@]}"
+  then
+    echo "Provided PDB '${2}' does not exist in current CDB."
+    echo "Possible names are:"
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    echo ""
+    echo "This list is updated when setting the DB-environment"
     return 1
   fi
   LV_PDB_NAME="${2}"
@@ -1269,7 +1287,7 @@ crsstat(){
 unalias llh 2>/dev/null
 llh() {
   # shellcheck disable=2012 # find on AIX does not have "-ls" option
-  ls -lA "$@" 2>/dev/null | awk '
+  ${GV_LS_CMD} -lA "$@" 2>/dev/null | awk '
     {
       if (NR == 1 && $1 == "total") {
         print $0
@@ -1327,12 +1345,12 @@ edu() {
       then
         LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_PREFIX}${LV_ELEM}"
       fi
-    done <<< "$(ls -1A "${LV_DIR}/")"
+    done <<< "$(${GV_LS_CMD} -1A "${LV_DIR}/")"
   else
     while read -r LV_ELEM
     do
       LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_ELEM}"
-    done <<< "$(ls -1Ad "$@")"
+    done <<< "$(${GV_LS_CMD} -1Ad "$@")"
   fi
   IFS="${LV_IFS_ORIG}"
 
@@ -1928,13 +1946,14 @@ fill_pdb_details_list () {
   else
     local LV_QUERY="SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| DECODE(local_undo, 1, 'YES', 'NO') FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name"
   fi
-  unset GV_PDB_LIST_DETAILS
+  unset GV_PDB_LIST_DETAILS GV_PDB_LIST
 
   if [[ "${GV_IS_CDB}" == "YES" ]]
   then
     while read -r LV_PDB_ELEM
     do
       GV_PDB_LIST_DETAILS[${#GV_PDB_LIST_DETAILS[@]}]="${LV_PDB_ELEM}"
+      GV_PDB_LIST[${#GV_PDB_LIST[@]}]=$(echo "${LV_PDB_ELEM}" | cut -d"|" -f1)
     done <<< "$(exec_sql_data "${LV_QUERY}")"
   fi
 }
@@ -2080,12 +2099,10 @@ SELECT 'x' FROM dual"
   fi
 }
 print_pdb_listing() {
-  unset GV_PDB_LIST
   printf "   %-15s %-10s %-10s %-19s %-10s\n" "PDB NAME" "STATUS" "RESTRICTED" "OPEN TIME" "LOCAL UNDO"
   printf "   %-15s %-10s %-10s %-19s %-10s\n" "---------------" "----------" "----------" "-------------------" "----------"
   for LV_PDB_DETAIL in "${GV_PDB_LIST_DETAILS[@]}"
   do
-    GV_PDB_LIST[${#GV_PDB_LIST[@]}]=$(echo "${LV_PDB_DETAIL}" | cut -d"|" -f1)
     echo "${LV_PDB_DETAIL}" | awk -F"|" '{printf("   %-15s %-10s %-10s %-19s %-10s\n", $1, $2, $3, $4, $5)}'
   done
 }
@@ -2272,7 +2289,7 @@ list_homes() {
     then
       LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
     fi
-  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
+  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ${GV_LS_CMD} -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
   if [[ "${#LV_ORA_INSTLOC_LIST[@]}" -gt 0 ]]
   then
     local LV_ORA_INVENTORY_LIST
@@ -2652,6 +2669,26 @@ get_tpt_oracle() {
         unzip tpt-oracle-master.zip -d "${GV_SQL_DIR}"
         rm -rf "${GV_SQL_DIR}/tpt"
         mv "${GV_SQL_DIR}/tpt-oracle-master" "${GV_SQL_DIR}/tpt"
+      fi
+    fi
+    set_sql_path_vars
+  fi
+}
+
+get_sqlzauberkasten_oracle() {
+  local RET_CODE
+  read_proxy
+  RET_CODE=$?
+
+  if [[ "${RET_CODE}" -eq 0 ]]
+  then
+    if curl -G https://github.com/Rendanic/SQL-Zauberkasten/archive/refs/heads/master.zip > "${GV_SQL_DIR}/SQL-Zauberkasten-master.zip"
+    then
+      if cd "${GV_SQL_DIR}"
+      then
+        unzip SQL-Zauberkasten-master.zip -d "${GV_SQL_DIR}"
+        rm -rf "${GV_SQL_DIR}/zauberkasten"
+        mv "${GV_SQL_DIR}/SQL-Zauberkasten-master" "${GV_SQL_DIR}/zauberkasten"
       fi
     fi
     set_sql_path_vars
