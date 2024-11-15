@@ -307,6 +307,10 @@ Available commands:
                 Tries to download the current "master" version of the tpt-oracle
                 repository from GitHub and extract it to
                 "${GV_SQL_DIR}/sql/tpt"
+    * get_sqlzauberkasten_oracle
+                Tries to download the current "master" version of the SQL-Zauberkasten
+                repository from GitHub and extract it to
+                "${GV_SQL_DIR}/sql/zauberkasten"
   == Miscellaneous
     * envhelp   This help text
     * varhelp   information about all variables defined in this script
@@ -380,10 +384,15 @@ EOT
 set_sql_path_vars() {
   export SQLPATH="${ORIGINAL_SQLPATH_PRE_ENVLOAD}"
   export ORACLE_PATH="${ORIGINAL_ORACLE_PATH_PRE_ENVLOAD}"
-  if [[ -d "${GV_SQL_DIR}/tpt" ]]
+  if [[ -d "${GV_SQL_DIR}tpt/" ]]
   then
-    export SQLPATH="${GV_SQL_DIR}/tpt:${SQLPATH}"
-    export ORACLE_PATH="${GV_SQL_DIR}/tpt:${ORACLE_PATH}"
+    export SQLPATH="${GV_SQL_DIR}tpt/:${SQLPATH}"
+    export ORACLE_PATH="${GV_SQL_DIR}tpt/:${ORACLE_PATH}"
+  fi
+  if [[ -d "${GV_SQL_DIR}zauberkasten/sql/" ]]
+  then
+    export SQLPATH="${GV_SQL_DIR}zauberkasten/sql/:${SQLPATH}"
+    export ORACLE_PATH="${GV_SQL_DIR}zauberkasten/sql/:${ORACLE_PATH}"
   fi
   export SQLPATH="${GV_SQL_DIR}:${SQLPATH}"
   export ORACLE_PATH="${GV_SQL_DIR}:${ORACLE_PATH}"
@@ -2659,6 +2668,26 @@ get_tpt_oracle() {
         unzip tpt-oracle-master.zip -d "${GV_SQL_DIR}"
         rm -rf "${GV_SQL_DIR}/tpt"
         mv "${GV_SQL_DIR}/tpt-oracle-master" "${GV_SQL_DIR}/tpt"
+      fi
+    fi
+    set_sql_path_vars
+  fi
+}
+
+get_sqlzauberkasten_oracle() {
+  local RET_CODE
+  read_proxy
+  RET_CODE=$?
+
+  if [[ "${RET_CODE}" -eq 0 ]]
+  then
+    if curl -G https://github.com/Rendanic/SQL-Zauberkasten/archive/refs/heads/master.zip > "${GV_SQL_DIR}/SQL-Zauberkasten-master.zip"
+    then
+      if cd "${GV_SQL_DIR}"
+      then
+        unzip SQL-Zauberkasten-master.zip -d "${GV_SQL_DIR}"
+        rm -rf "${GV_SQL_DIR}/zauberkasten"
+        mv "${GV_SQL_DIR}/SQL-Zauberkasten-master" "${GV_SQL_DIR}/zauberkasten"
       fi
     fi
     set_sql_path_vars
