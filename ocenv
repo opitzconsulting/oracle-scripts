@@ -911,21 +911,29 @@ pdbsqlint() {
   local LV_PDB_NAME LV_BINARY
   if [[ ${#GV_PDB_LIST[@]} -eq 0 ]]
   then
-    echo "Aktuell ausgewaehltes Environment enthaelt keine PDBs."
+    echo "Selected environment doesn't have PDBs."
     return 2
   elif [[ ${#GV_PDB_LIST[@]} -eq 1 ]]
   then
-    echo "Verbinde mit einziger PDB \"${GV_PDB_LIST[*]}\"."
+    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"."
     LV_PDB_NAME="${GV_PDB_LIST[*]}"
   elif [[ -z "${1}" || ( "${1}" != "sqlplus" && "${1}" != "sqlcl" ) ]]
   then
-    echo "Interne Methode, erster Parameter muss \"sqlplus\" oder \"sqlcl\" sein."
+    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"."
     return 1
   elif [[ -z "${2}" ]]
   then
-    echo "Bitte PDB-Namen als ersten Parameter angeben."
-    echo "Moegliche Namen sind:"
+    echo "Please provide PDB-name as first parameter."
+    echo "Possible names are:"
     echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    return 1
+  elif ! in_list "${2}" "${GV_PDB_LIST[@]}"
+  then
+    echo "Provided PDB '${2}' does not exist in current CDB."
+    echo "Possible names are:"
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    echo ""
+    echo "This list is updated when setting the DB-environment"
     return 1
   fi
   LV_PDB_NAME="${2}"
@@ -1928,13 +1936,14 @@ fill_pdb_details_list () {
   else
     local LV_QUERY="SELECT name ||'|'|| open_mode ||'|'|| restricted ||'|'|| TO_CHAR(open_time, 'YYYY-MM-DD HH24:MI:SS') ||'|'|| DECODE(local_undo, 1, 'YES', 'NO') FROM v\$pdbs WHERE name <> 'PDB\$SEED' ORDER BY name"
   fi
-  unset GV_PDB_LIST_DETAILS
+  unset GV_PDB_LIST_DETAILS GV_PDB_LIST
 
   if [[ "${GV_IS_CDB}" == "YES" ]]
   then
     while read -r LV_PDB_ELEM
     do
       GV_PDB_LIST_DETAILS[${#GV_PDB_LIST_DETAILS[@]}]="${LV_PDB_ELEM}"
+      GV_PDB_LIST[${#GV_PDB_LIST[@]}]=$(echo "${LV_PDB_ELEM}" | cut -d"|" -f1)
     done <<< "$(exec_sql_data "${LV_QUERY}")"
   fi
 }
@@ -2080,12 +2089,10 @@ SELECT 'x' FROM dual"
   fi
 }
 print_pdb_listing() {
-  unset GV_PDB_LIST
   printf "   %-15s %-10s %-10s %-19s %-10s\n" "PDB NAME" "STATUS" "RESTRICTED" "OPEN TIME" "LOCAL UNDO"
   printf "   %-15s %-10s %-10s %-19s %-10s\n" "---------------" "----------" "----------" "-------------------" "----------"
   for LV_PDB_DETAIL in "${GV_PDB_LIST_DETAILS[@]}"
   do
-    GV_PDB_LIST[${#GV_PDB_LIST[@]}]=$(echo "${LV_PDB_DETAIL}" | cut -d"|" -f1)
     echo "${LV_PDB_DETAIL}" | awk -F"|" '{printf("   %-15s %-10s %-10s %-19s %-10s\n", $1, $2, $3, $4, $5)}'
   done
 }
