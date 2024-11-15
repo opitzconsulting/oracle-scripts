@@ -568,6 +568,7 @@ then
   echo "@${GV_CUSTOM_LOGIN_SQL}" >> "${GV_SQL_DIR}/login.sql"
 fi
 
+GV_LS_CMD="$(which ls)"
 alias cdh='cd ${ORACLE_HOME}'
 unalias cdt 2>/dev/null
 # shellcheck disable=2164
@@ -1286,7 +1287,7 @@ crsstat(){
 unalias llh 2>/dev/null
 llh() {
   # shellcheck disable=2012 # find on AIX does not have "-ls" option
-  ls -lA "$@" 2>/dev/null | awk '
+  ${GV_LS_CMD} -lA "$@" 2>/dev/null | awk '
     {
       if (NR == 1 && $1 == "total") {
         print $0
@@ -1344,12 +1345,12 @@ edu() {
       then
         LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_PREFIX}${LV_ELEM}"
       fi
-    done <<< "$(ls -1A "${LV_DIR}/")"
+    done <<< "$(${GV_LS_CMD} -1A "${LV_DIR}/")"
   else
     while read -r LV_ELEM
     do
       LV_FILEDIR_LIST[${#LV_FILEDIR_LIST[@]}]="${LV_ELEM}"
-    done <<< "$(ls -1Ad "$@")"
+    done <<< "$(${GV_LS_CMD} -1Ad "$@")"
   fi
   IFS="${LV_IFS_ORIG}"
 
@@ -2288,7 +2289,7 @@ list_homes() {
     then
       LV_ORA_INSTLOC_LIST[${#LV_ORA_INSTLOC_LIST[@]}]="${LV_ORA_INSTLOC_ELEM}"
     fi
-  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ls -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
+  done <<< "$( ( awk -F: '/^[^#]*:[^#]+:/{printf("%s/oraInst.loc\n", $2)}' /etc/oratab 2>/dev/null; awk -F: '/[^[:space:]]/{printf("%s/oraInst.loc\n", $1)}' /etc/oragchomelist 2>/dev/null; awk -F= '/crs_home/{printf("%s/oraInst.loc\n", $2)}' /etc/oracle/olr.loc 2>/dev/null; ${GV_LS_CMD} -1 /etc/oraInst.loc 2>/dev/null) | sort -u )"
   if [[ "${#LV_ORA_INSTLOC_LIST[@]}" -gt 0 ]]
   then
     local LV_ORA_INVENTORY_LIST
