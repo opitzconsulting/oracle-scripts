@@ -400,7 +400,7 @@ set_sql_path_vars() {
 set_sql_path_vars
 
 ## Configure syntax highlighting in VIM, but only if not configured already
-if [[ -n "$(which vim 2>/dev/null)" && -f "$(which vim)" ]]
+if [[ -n "$(command which vim 2>/dev/null)" && -f "$(command which vim)" ]]
 then
   export EDITOR=vim
   alias vi=vim
@@ -460,9 +460,9 @@ fi
 
 if [[ -z "${GV_RLWRAP}" || ! -x "${GV_RLWRAP}" ]]
 then
-  if [[ -x "$(which rlwrap 2>/dev/null)" ]]
+  if [[ -x "$(command which rlwrap 2>/dev/null)" ]]
   then
-    GV_RLWRAP="$(which rlwrap 2>/dev/null)"
+    GV_RLWRAP="$(command which rlwrap 2>/dev/null)"
   elif [[ "${GV_OS_TYPE}" == 'Linux' ]]
   then
     # Look for "custom" rlwrap binaries in $HOME of current user
@@ -568,7 +568,7 @@ then
   echo "@${GV_CUSTOM_LOGIN_SQL}" >> "${GV_SQL_DIR}/login.sql"
 fi
 
-GV_LS_CMD="$(which ls)"
+GV_LS_CMD="$(command which ls)"
 alias cdh='cd ${ORACLE_HOME}'
 unalias cdt 2>/dev/null
 # shellcheck disable=2164
@@ -579,14 +579,14 @@ alias cda='if [[ -d "${ORACLE_BASE}/admin/${ORACLE_SID}" ]]; then cd "${ORACLE_B
 alias cdd='cd ${GV_INSTANCE_DIAGNOSTIC_DEST}/trace'
 alias pmon='ps -ef | grep -w -E "ora_pmon_[a-zA-Z0-9]+"'
 ## amon uses ASH if not called with "-l n" parameter
-[[ -n "$(which amon 2>/dev/null)" ]] && alias amon="\$(which amon) -l n"
+[[ -n "$(command which amon 2>/dev/null)" ]] && alias amon="\$(command which amon) -l n"
 if [[ "${GV_OS_TYPE}" == "AIX" ]]
 then
   alias psg='ps -ef | grep -v grep | grep '
 else
   alias psg='ps aux | grep -v grep | grep --color=auto'
 fi
-if [[ -x "$(which less 2>/dev/null)" ]]
+if [[ -x "$(command which less 2>/dev/null)" ]]
 then
   export GV_PAGER=less
 else
@@ -1386,7 +1386,7 @@ edf() {
   local LV_THRESHOLD_CRIT=95
   local LV_THRESHOLD_WARN=85
 
-  if [[ "$(uname -s)" == "AIX" ]] && ! (which df 2>/dev/null| grep -q "/opt/freeware/")
+  if [[ "$(uname -s)" == "AIX" ]] && ! (command which df 2>/dev/null| grep -q "/opt/freeware/")
   then
     local LV_DF="df -Pg"
   else
@@ -2338,7 +2338,7 @@ list_homes() {
 }
 mystat() {
   local LV_TARGET="${1}"
-  if [[ "$(uname -s)" == "AIX" ]] && ! (which stat 2>/dev/null| grep -q "/opt/freeware/")
+  if [[ "$(uname -s)" == "AIX" ]] && ! (command which stat 2>/dev/null| grep -q "/opt/freeware/")
   then
     istat "${LV_TARGET}" | awk '/Owner/{split($2, v_a, "[()]"); print v_a[2]; }'
   else
