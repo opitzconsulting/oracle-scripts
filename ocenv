@@ -180,7 +180,7 @@ While sourcing the script it will set the environment of the active GRID_HOME
 
 This script will create a file "${HOME}/.ocenvrc" containing a line like this:
 
-export GV_SCRIPT_DIR="/path/where/your/ocenv/file/is/located/filename"
+export GV_SCRIPT_DIR="/path/where/your/ocenv/file/is/located"
 
 Further optional lines in this file are
 
@@ -262,6 +262,7 @@ Available commands:
     * myoraenv  sets the environment for the given ORACLE_SID. If the instance
                 is registered in Grid Infrastructure, the ORACLE_HOME and other
                 environment parameters are read from there
+    * oratop    an alias to call the "oratop" binary from the selected ORACLE_HOME
     * pdbsql    connect a PDB directly via BEQUEATH protocoll, wrap in "rlwrap"
                 if present
                 Parameter 1: Name of the PDB
@@ -578,6 +579,7 @@ alias cda='if [[ -d "${ORACLE_BASE}/admin/${ORACLE_SID}" ]]; then cd "${ORACLE_B
 
 alias cdd='cd ${GV_INSTANCE_DIAGNOSTIC_DEST}/trace'
 alias pmon='ps -ef | grep -w -E "ora_pmon_[a-zA-Z0-9]+"'
+alias oratop='"${ORACLE_HOME}"/suptools/oratop/oratop'
 ## amon uses ASH if not called with "-l n" parameter
 [[ -n "$(command which amon 2>/dev/null)" ]] && alias amon="\$(command which amon) -l n"
 if [[ "${GV_OS_TYPE}" == "AIX" ]]
