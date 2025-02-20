@@ -2643,7 +2643,7 @@ read_proxy() {
     unset HTTPS_PROXY
   fi
 }
-pull_ocenv_main() {
+update_ocenv() {
   local RET_CODE
   read_proxy
   RET_CODE=$?
@@ -2655,6 +2655,10 @@ pull_ocenv_main() {
       mv "${GV_SOURCED_SCRIPT}.tmp" "${GV_SOURCED_SCRIPT}"
     fi
   fi
+  distribute_env
+}
+pull_ocenv_main() {
+  update_ocenv
 }
 
 get_tpt_oracle() {
