@@ -2643,6 +2643,17 @@ read_proxy() {
     unset HTTPS_PROXY
   fi
 }
+update_autoupgrade() {
+  if [[ -z "${ORACLE_HOME}" ]]
+  then
+    echo "ORACLE_HOME not set, cannot upgrade AutoUpgrade."
+  elif [[ ! -d "${ORACLE_HOME}/rdbms/admin" ]]
+  then
+    echo "ORACLE_HOME set but does not contain rdbms/admin subdirectory, cannot install AutoUpgrade."
+  else
+    wget -O "${ORACLE_HOME}/rdbms/admin/autoupgrade.jar" https://download.oracle.com/otn-pub/otn_software/autoupgrade.jar
+  fi
+}
 update_ocenv() {
   local RET_CODE
   read_proxy
