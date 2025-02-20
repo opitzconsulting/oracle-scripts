@@ -220,9 +220,9 @@ While sourcing these configurations will be set
    and the variables SQL_PATH and ORACLE_PATH will be defined to point to this
    directory, to allow autoexecution of this script when starting SQL*Plus.
  * An alias definition \"ocenv\" will be appended to .bashrc if not present
- * The shell prompt has 2 lines and contains the complete working directory path,
-   the name of the active environment, the current user and the hostname of the
-   system.
+ * The shell prompt has 2 lines and contains the complete working directory
+   path, the name of the active environment, the current user and the hostname
+   of the system.
 
 Available commands:
   == Changing Directories
@@ -262,7 +262,7 @@ Available commands:
     * myoraenv  sets the environment for the given ORACLE_SID. If the instance
                 is registered in Grid Infrastructure, the ORACLE_HOME and other
                 environment parameters are read from there
-    * oratop    an alias to call the "oratop" binary from the selected ORACLE_HOME
+    * oratop    alias to call the "oratop" binary from the selected ORACLE_HOME
     * pdbsql    connect a PDB directly via BEQUEATH protocoll, wrap in "rlwrap"
                 if present
                 Parameter 1: Name of the PDB
@@ -284,12 +284,12 @@ Available commands:
                 will use "SYSDBA" as privilege if current user is not ASM owner
     * asmdu     DiskUsage for ASM diskgroups
     * asmsql    spawns a subshell, defines ASM environment and calls SQL*Plus
-    * crsstat   colorized and reformateted GI overview similar to "crsctl stat res -t"
+    * crsstat   customized CRS overview similar to "crsctl stat res -t"
   == Oracle Cloud Infrastructure
     * bkup_api_list_jobs
                 list the bkup_api jobs for the currently active environment
                 Parameter 1: Number of lines (optional)
-                Parameter 2: Type of job (DB|FULL|INCREMENTAL|KEEP|ARCH) (optional)
+                Parameter 2: Jobtype (DB|FULL|INCREMENTAL|KEEP|ARCH) (optional)
     * bkup_api_last_job
                 show status of last executed bkup_api job for the currently
                 active environment
@@ -309,23 +309,30 @@ Available commands:
                 repository from GitHub and extract it to
                 "${GV_SQL_DIR}/sql/tpt"
     * get_sqlzauberkasten_oracle
-                Tries to download the current "master" version of the SQL-Zauberkasten
-                repository from GitHub and extract it to
+                Tries to download the current "master" version of the
+                SQL-Zauberkasten repository from GitHub and extract it to
                 "${GV_SQL_DIR}/sql/zauberkasten"
   == Miscellaneous
     * envhelp   This help text
     * varhelp   information about all variables defined in this script
     * ocenv     alias to source the environment script
-    * u         reload the complete environment without sourcing the script again
+    * u         reload the complete environment without sourcing the script
+                again
     * show_env_version
                 show header block with version information
     * distribute_env
                 distributes environment file for the current user on all other
                 RAC nodes
-    * pull_ocenv_main
-                Downloads the current version of the script from the git repository
-                https://github.com/opitzconsulting/oracle-scripts
+    * update_ocenv
+                Downloads the current version of the script from the git
+                repository
+                  https://github.com/opitzconsulting/oracle-scripts
                 and puts it to "${GV_SOURCED_SCRIPT}".
+                Also distributes the newly downloaded version to all other
+                RAC-nodes
+    * update_autoupgrade
+                Update/install "autoupgrade.jar" in the currently selected
+                ORACLE_HOME
 EOT
 }
 
