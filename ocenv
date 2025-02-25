@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC2128
+if [[ -z "${BASH_VERSINFO}" ]]
+then
+  echo "This script MUST be sources from a current Bash shell"
+  return 1
+elif [[ "${BASH_VERSINFO[0]}" -lt 3 ]]
+then
+  echo "Bash version too old. This script cannot function in this version."
+  return 1
+elif [[ "${BASH_VERSINFO[0]}" -lt 4 ]]
+then
+  echo "WARNING, this script is only tested in Bash 4 and might not work in this version"
+fi
+
 ## Allow debugging of script, including line-number information and runtime-information
 ## We use "²" as delimiter, to allow separation of the output (e.g. in Excel)
 if [[ "$1" == --debug ]]
