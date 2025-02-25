@@ -2658,7 +2658,19 @@ update_autoupgrade() {
   then
     echo "ORACLE_HOME set but does not contain rdbms/admin subdirectory, cannot install AutoUpgrade."
   else
-    wget -O "${ORACLE_HOME}/rdbms/admin/autoupgrade.jar" https://download.oracle.com/otn-pub/otn_software/autoupgrade.jar
+    if wget --tries=3 --timeout=15 -O "/tmp/autoupgrade.jar" https://download.oracle.com/otn-pub/otn_software/autoupgrade.jar
+    then
+      if [[ -s "/tmp/autoupgrade.jar" ]]
+      then
+        mv /tmp/autoupgrade.jar "${ORACLE_HOME}/rdbms/admin/autoupgrade.jar"
+      else
+        echo "Download didn't return an error, but downloaded file is empty."
+        return 1
+      fi
+    else
+      echo "Download failed."
+      return 1
+    fi
   fi
 }
 update_ocenv() {
