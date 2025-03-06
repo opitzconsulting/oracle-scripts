@@ -944,29 +944,29 @@ pdbsqlint() {
   local LV_PDB_NAME LV_BINARY
   if [[ ${#GV_PDB_LIST[@]} -eq 0 ]]
   then
-    echo "Selected environment doesn't have PDBs."
+    echo "Selected environment doesn't have PDBs." 1>&2
     return 2
   elif [[ ${#GV_PDB_LIST[@]} -eq 1 ]]
   then
-    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"."
+    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"." 1>&2
     LV_PDB_NAME="${GV_PDB_LIST[*]}"
   elif [[ -z "${1}" || ( "${1}" != "sqlplus" && "${1}" != "sqlcl" ) ]]
   then
-    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"."
+    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"." 1>&2
     return 1
   elif [[ -z "${2}" ]]
   then
-    echo "Please provide PDB-name as first parameter."
-    echo "Possible names are:"
-    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    echo "Please provide PDB-name as first parameter." 1>&2
+    echo "Possible names are:" 1>&2
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}' 1>&2
     return 1
   elif ! in_list "${2}" "${GV_PDB_LIST[@]}"
   then
-    echo "Provided PDB '${2}' does not exist in current CDB."
-    echo "Possible names are:"
-    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
-    echo ""
-    echo "This list is updated when setting the DB-environment"
+    echo "Provided PDB '${2}' does not exist in current CDB." 1>&2
+    echo "Possible names are:" 1>&2
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}' 1>&2
+    echo "" 1>&2
+    echo "This list is updated when setting the DB-environment" 1>&2
     return 1
   fi
   LV_PDB_NAME="${2}"
