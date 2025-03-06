@@ -321,11 +321,11 @@ Available commands:
     * get_tpt_oracle
                 Tries to download the current "master" version of the tpt-oracle
                 repository from GitHub and extract it to
-                "${GV_SQL_DIR}/sql/tpt"
+                "${GV_SQL_DIR}tpt"
     * get_sqlzauberkasten_oracle
                 Tries to download the current "master" version of the
                 SQL-Zauberkasten repository from GitHub and extract it to
-                "${GV_SQL_DIR}/sql/zauberkasten"
+                "${GV_SQL_DIR}zauberkasten"
   == Miscellaneous
     * envhelp   This help text
     * varhelp   information about all variables defined in this script
