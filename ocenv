@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC2128
+if [[ -z "${BASH_VERSINFO}" ]]
+then
+  echo "This script MUST be sources from a current Bash shell"
+  return 1
+elif [[ "${BASH_VERSINFO[0]}" -lt 3 ]]
+then
+  echo "Bash version too old. This script cannot function in this version."
+  return 1
+elif [[ "${BASH_VERSINFO[0]}" -lt 4 ]]
+then
+  echo "WARNING, this script is only tested in Bash 4 and might not work in this version"
+fi
+
 ## Allow debugging of script, including line-number information and runtime-information
 ## We use "²" as delimiter, to allow separation of the output (e.g. in Excel)
 if [[ "$1" == --debug ]]
@@ -39,7 +53,7 @@ fi
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2024-11-29"
+GV_OCENV_VERSION="2025-03-06"
 
 ###############################################################################
 ## Environment support homogenization
@@ -180,7 +194,7 @@ While sourcing the script it will set the environment of the active GRID_HOME
 
 This script will create a file "${HOME}/.ocenvrc" containing a line like this:
 
-export GV_SCRIPT_DIR="/path/where/your/ocenv/file/is/located/filename"
+export GV_SCRIPT_DIR="/path/where/your/ocenv/file/is/located"
 
 Further optional lines in this file are
 
@@ -220,9 +234,9 @@ While sourcing these configurations will be set
    and the variables SQL_PATH and ORACLE_PATH will be defined to point to this
    directory, to allow autoexecution of this script when starting SQL*Plus.
  * An alias definition \"ocenv\" will be appended to .bashrc if not present
- * The shell prompt has 2 lines and contains the complete working directory path,
-   the name of the active environment, the current user and the hostname of the
-   system.
+ * The shell prompt has 2 lines and contains the complete working directory
+   path, the name of the active environment, the current user and the hostname
+   of the system.
 
 Available commands:
   == Changing Directories
@@ -262,6 +276,7 @@ Available commands:
     * myoraenv  sets the environment for the given ORACLE_SID. If the instance
                 is registered in Grid Infrastructure, the ORACLE_HOME and other
                 environment parameters are read from there
+    * oratop    alias to call the "oratop" binary from the selected ORACLE_HOME
     * pdbsql    connect a PDB directly via BEQUEATH protocoll, wrap in "rlwrap"
                 if present
                 Parameter 1: Name of the PDB
@@ -283,12 +298,12 @@ Available commands:
                 will use "SYSDBA" as privilege if current user is not ASM owner
     * asmdu     DiskUsage for ASM diskgroups
     * asmsql    spawns a subshell, defines ASM environment and calls SQL*Plus
-    * crsstat   colorized and reformateted GI overview similar to "crsctl stat res -t"
+    * crsstat   customized CRS overview similar to "crsctl stat res -t"
   == Oracle Cloud Infrastructure
     * bkup_api_list_jobs
                 list the bkup_api jobs for the currently active environment
                 Parameter 1: Number of lines (optional)
-                Parameter 2: Type of job (DB|FULL|INCREMENTAL|KEEP|ARCH) (optional)
+                Parameter 2: Jobtype (DB|FULL|INCREMENTAL|KEEP|ARCH) (optional)
     * bkup_api_last_job
                 show status of last executed bkup_api job for the currently
                 active environment
@@ -306,25 +321,32 @@ Available commands:
     * get_tpt_oracle
                 Tries to download the current "master" version of the tpt-oracle
                 repository from GitHub and extract it to
-                "${GV_SQL_DIR}/sql/tpt"
+                "${GV_SQL_DIR}tpt"
     * get_sqlzauberkasten_oracle
-                Tries to download the current "master" version of the SQL-Zauberkasten
-                repository from GitHub and extract it to
-                "${GV_SQL_DIR}/sql/zauberkasten"
+                Tries to download the current "master" version of the
+                SQL-Zauberkasten repository from GitHub and extract it to
+                "${GV_SQL_DIR}zauberkasten"
   == Miscellaneous
     * envhelp   This help text
     * varhelp   information about all variables defined in this script
     * ocenv     alias to source the environment script
-    * u         reload the complete environment without sourcing the script again
+    * u         reload the complete environment without sourcing the script
+                again
     * show_env_version
                 show header block with version information
     * distribute_env
                 distributes environment file for the current user on all other
                 RAC nodes
-    * pull_ocenv_main
-                Downloads the current version of the script from the git repository
-                https://github.com/opitzconsulting/oracle-scripts
+    * update_ocenv
+                Downloads the current version of the script from the git
+                repository
+                  https://github.com/opitzconsulting/oracle-scripts
                 and puts it to "${GV_SOURCED_SCRIPT}".
+                Also distributes the newly downloaded version to all other
+                RAC-nodes
+    * update_autoupgrade
+                Update/install "autoupgrade.jar" in the currently selected
+                ORACLE_HOME
 EOT
 }
 
@@ -509,14 +531,14 @@ cat > "${GV_SQL_DIR}/login.sql" <<-"EOT"
 
   -- Query username, instance-name and (on 12c) container-name
   -- Set SQLPROMPT to combination of the results
-  SELECT   UPPER(user) || '@'||
+  SELECT   SYS_CONTEXT('USERENV', 'SESSION_USER') || '@'||
   &&GE12     CASE WHEN SYS_CONTEXT('USERENV','CON_NAME') != 'CDB$ROOT' THEN UPPER(SYS_CONTEXT('USERENV','CON_NAME'))
   &&GE12     ELSE
-           UPPER(instance_name)
+           SYS_CONTEXT('USERENV', 'INSTANCE_NAME')
   &&GE12   END
          ||CHR(10)
          ||'SQL> ' global_name
-  FROM v$instance;
+  FROM dual;
 
   SET SQLPROMPT   "&gv_gname"
 
@@ -578,6 +600,7 @@ alias cda='if [[ -d "${ORACLE_BASE}/admin/${ORACLE_SID}" ]]; then cd "${ORACLE_B
 
 alias cdd='cd ${GV_INSTANCE_DIAGNOSTIC_DEST}/trace'
 alias pmon='ps -ef | grep -w -E "ora_pmon_[a-zA-Z0-9]+"'
+alias oratop='"${ORACLE_HOME}"/suptools/oratop/oratop'
 ## amon uses ASH if not called with "-l n" parameter
 [[ -n "$(command which amon 2>/dev/null)" ]] && alias amon="\$(command which amon) -l n"
 if [[ "${GV_OS_TYPE}" == "AIX" ]]
@@ -921,29 +944,29 @@ pdbsqlint() {
   local LV_PDB_NAME LV_BINARY
   if [[ ${#GV_PDB_LIST[@]} -eq 0 ]]
   then
-    echo "Selected environment doesn't have PDBs."
+    echo "Selected environment doesn't have PDBs." 1>&2
     return 2
   elif [[ ${#GV_PDB_LIST[@]} -eq 1 ]]
   then
-    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"."
+    echo "Connecting with only existing PDB \"${GV_PDB_LIST[*]}\"." 1>&2
     LV_PDB_NAME="${GV_PDB_LIST[*]}"
   elif [[ -z "${1}" || ( "${1}" != "sqlplus" && "${1}" != "sqlcl" ) ]]
   then
-    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"."
+    echo "Internal method, first parameter must be \"sqlplus\" or \"sqlcl\"." 1>&2
     return 1
   elif [[ -z "${2}" ]]
   then
-    echo "Please provide PDB-name as first parameter."
-    echo "Possible names are:"
-    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
+    echo "Please provide PDB-name as first parameter." 1>&2
+    echo "Possible names are:" 1>&2
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}' 1>&2
     return 1
   elif ! in_list "${2}" "${GV_PDB_LIST[@]}"
   then
-    echo "Provided PDB '${2}' does not exist in current CDB."
-    echo "Possible names are:"
-    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}'
-    echo ""
-    echo "This list is updated when setting the DB-environment"
+    echo "Provided PDB '${2}' does not exist in current CDB." 1>&2
+    echo "Possible names are:" 1>&2
+    echo "${GV_PDB_LIST[@]}" | awk '{printf("   %s\n", $0)}' 1>&2
+    echo "" 1>&2
+    echo "This list is updated when setting the DB-environment" 1>&2
     return 1
   fi
   LV_PDB_NAME="${2}"
@@ -2641,7 +2664,30 @@ read_proxy() {
     unset HTTPS_PROXY
   fi
 }
-pull_ocenv_main() {
+update_autoupgrade() {
+  if [[ -z "${ORACLE_HOME}" ]]
+  then
+    echo "ORACLE_HOME not set, cannot upgrade AutoUpgrade."
+  elif [[ ! -d "${ORACLE_HOME}/rdbms/admin" ]]
+  then
+    echo "ORACLE_HOME set but does not contain rdbms/admin subdirectory, cannot install AutoUpgrade."
+  else
+    if wget --tries=3 --timeout=15 -O "/tmp/autoupgrade.jar" https://download.oracle.com/otn-pub/otn_software/autoupgrade.jar
+    then
+      if [[ -s "/tmp/autoupgrade.jar" ]]
+      then
+        mv /tmp/autoupgrade.jar "${ORACLE_HOME}/rdbms/admin/autoupgrade.jar"
+      else
+        echo "Download didn't return an error, but downloaded file is empty."
+        return 1
+      fi
+    else
+      echo "Download failed."
+      return 1
+    fi
+  fi
+}
+update_ocenv() {
   local RET_CODE
   read_proxy
   RET_CODE=$?
@@ -2653,6 +2699,10 @@ pull_ocenv_main() {
       mv "${GV_SOURCED_SCRIPT}.tmp" "${GV_SOURCED_SCRIPT}"
     fi
   fi
+  distribute_env
+}
+pull_ocenv_main() {
+  update_ocenv
 }
 
 get_tpt_oracle() {
