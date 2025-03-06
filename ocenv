@@ -531,14 +531,14 @@ cat > "${GV_SQL_DIR}/login.sql" <<-"EOT"
 
   -- Query username, instance-name and (on 12c) container-name
   -- Set SQLPROMPT to combination of the results
-  SELECT   UPPER(user) || '@'||
+  SELECT   SYS_CONTEXT('USERENV', 'SESSION_USER') || '@'||
   &&GE12     CASE WHEN SYS_CONTEXT('USERENV','CON_NAME') != 'CDB$ROOT' THEN UPPER(SYS_CONTEXT('USERENV','CON_NAME'))
   &&GE12     ELSE
-           UPPER(instance_name)
+           SYS_CONTEXT('USERENV', 'INSTANCE_NAME')
   &&GE12   END
          ||CHR(10)
          ||'SQL> ' global_name
-  FROM v$instance;
+  FROM dual;
 
   SET SQLPROMPT   "&gv_gname"
 
