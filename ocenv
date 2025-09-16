@@ -2404,6 +2404,7 @@ mystat() {
 }
 list_sids() {
   local LV_IS_RAC LV_ASM_LINE_LIST LV_ASM_LINE_COUNT
+  unset GV_DB_SID_LIST
   LV_IS_RAC=$(is_rac && echo TRUE || echo FALSE);
   LV_ASM_LINE_LIST=$(grep '^+ASM[0-9]*:[^:]\+:.*$' /etc/oratab 2>/dev/null)
   LV_ASM_LINE_COUNT="$(echo "${LV_ASM_LINE_LIST}" | wc -l)"
@@ -2509,6 +2510,7 @@ list_sids() {
         printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
         generate_alias_for_dbuniquename "${LV_DB_UNIQUE_NAME}" "${LV_INST_NAME}"
+        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_INST_NAME}"
       fi
     done
@@ -2545,6 +2547,7 @@ list_sids() {
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
+          GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
           GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
         fi
       fi
@@ -2609,6 +2612,7 @@ list_sids() {
       if [[ "${LV_TYPE}" != "asm" ]]
       then
         generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
+        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
       fi
     fi
