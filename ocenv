@@ -22,6 +22,7 @@ then
   set -x
 fi
 
+################################################################################
 # Bash script to configure the environment for an Oracle DBA
 # Copyright (C) 2021  OPITZ CONSULTING Deutschland GmbH
 #
@@ -37,6 +38,8 @@ fi
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+################################################################################
+
 
 ################################################################################
 # Hints (for usage end enhancements)
@@ -55,7 +58,7 @@ fi
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
 GV_OCENV_VERSION="2025-03-06"
 
-###############################################################################
+################################################################################
 ## Environment support homogenization
 GV_OS_TYPE=$(uname -s)
 if [[ -z "${GC_CMD_READLINK}" ]]
@@ -74,10 +77,10 @@ then
   esac
   typeset -r GC_CMD_READLINK
 fi
-###############################################################################
+################################################################################
 # If readlink is not available on the system (e.g. on AIX) the fallback is to
 # use pwd -P and the "cd"-approach to resolve a symbolic link.
-###############################################################################
+################################################################################
 function PwdResolvePath {
   if [[ "$1" == "-f" ]]; then shift; fi
   typeset LV_PATH LV_CMD LV_DIR LV_LINK
@@ -112,7 +115,7 @@ function PwdResolvePath {
   echo "$(pwd -P)${LV_CMD}"
 }
 ## END Environment support homogenization
-###############################################################################
+################################################################################
 
 GV_TTY=$(tty -s; echo $?)
 
@@ -629,9 +632,9 @@ echo_tty() {
   fi
 }
 
-##############################################################################
+################################################################################
 # Queries /etc/oracle/ocr.loc for information about installed Grid Infrastructure
-##############################################################################
+################################################################################
 is_rac() {
   if [[ -e /etc/oracle/ocr.loc && -r /etc/oracle/ocr.loc ]]
   then
@@ -1794,36 +1797,36 @@ in_list() {
   LV_INDEX="$(in_list_index "$@")"
   return $?
 }
-##############################################################################
+################################################################################
 # Pipeline-function to convert stdin to lowercase
-##############################################################################
+################################################################################
 to_lower() {
   tr '[:upper:]' '[:lower:]'
 }
-##############################################################################
+################################################################################
 # Quickly list all running instances
 #
 # Prerequisites: None
-##############################################################################
+################################################################################
 get_running_sids() {
   ps -eo user,args | awk '/[[:alpha:]]_smon_[[:alnum:]]/{split($2, a, "_"); print a[3];}' | sort -u
 }
-##############################################################################
+################################################################################
 # Find out if database-instance is running by looking for ora_smon process
 # Oracle XE databases use "xe_smon" as process-prefix
 # Oracle 23c FREE databases use "db_smon" as process-prefix
 #
 # Prerequisites: None
-##############################################################################
+################################################################################
 is_db_running() {
   local LV_ORACLE_SID
   LV_ORACLE_SID=$1
   # shellcheck disable=2009 # no pgrep on AIX
   ps -ef | grep -q -E -w "(ora|xe|db)_smon_${LV_ORACLE_SID}"
 }
-##############################################################################
+################################################################################
 # Find out if ASM-instance is running by looking for asm_smon process
-##############################################################################
+################################################################################
 is_asm_running() {
   [[ -n "${GV_ASM_SID}" ]] || return 1
   # No Index for the array, we only use the first hit
@@ -1831,10 +1834,10 @@ is_asm_running() {
   # shellcheck disable=2009 # no pgrep on AIX
   ps -ef | grep -q -E -w "(asm)_smon_\\${GV_ASM_SID}"
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against the current database.
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_sql_data() {
   if [[ -n "${TWO_TASK}" ]]
   then
@@ -1864,10 +1867,10 @@ exec_sql_data() {
   fi
   return ${LV_RET_CODE}
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against all running instances
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_on_all_sids() {
   shopt -s expand_aliases
   for LV_SID in $(get_running_sids)
@@ -1878,10 +1881,10 @@ exec_on_all_sids() {
   done
   shopt -u expand_aliases
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against the ASM-instance.
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_asm_sql_data() {
   (
     if myoraenv "${GV_ASM_SID}"
