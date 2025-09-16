@@ -331,6 +331,7 @@ Available commands:
                 "${GV_SQL_DIR}zauberkasten"
   == Miscellaneous
     * envhelp   This help text
+    * envstatus some diagnostic information about the installation environment
     * varhelp   information about all variables defined in this script
     * ocenv     alias to source the environment script
     * u         reload the complete environment without sourcing the script
@@ -351,6 +352,23 @@ Available commands:
                 Update/install "autoupgrade.jar" in the currently selected
                 ORACLE_HOME
 EOT
+}
+
+envstatus() {
+  echo "#######################################################################"
+  echo "# OCENV Version ${GV_OCENV_VERSION}"
+  echo "#"
+  echo "# Bash Version    : ${BASH_VERSION}"
+  echo "#"
+  echo "# Installationsort: ${GV_SCRIPT_DIR}"
+  echo "# SQL Skript Pfad : ${GV_SQL_DIR}"
+  echo "# Executable Pfad : ${GV_BIN_DIR}"
+  echo "#"
+  echo "# Custom login.sql: ${GV_CUSTOM_LOGIN_SQL}"
+  echo "#"
+  echo "# Custom NLS_LANG       : ${GV_NLS_LANG}"
+  echo "# Custom NLS_DATE_FORMAT: ${GV_NLS_DATE_FORMAT}"
+  echo "#######################################################################"
 }
 
 varhelp() {
