@@ -931,9 +931,22 @@ sqlint() {
     ${GV_RLWRAP} "${ORACLE_HOME}/bin/sqlplus" "$@"
   elif [[ "${LV_BINARY}" == "sqlcl" ]]
   then
-    bash "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" "$@"
+    # This used to be the path where the "sql" binary (providing the "sqlcl"
+    # tool) was located
+    if [[ -x "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" ]]
+    then
+      bash "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" "$@"
+    # With either the JUL2024 or the OCT2024 this binary was moved and can now
+    # be found in the bin directory in the ORACLE_HOME. Unfortunately, we use
+    # "sql" as a method-name, so this is inaccessible without this codepath
+    elif [[ -x "${ORACLE_HOME}/bin/sql" ]]
+    then
+      bash "${ORACLE_HOME}/bin/sql" "$@"
+    else
+      echo "Cannot find \"sql\" binary in ORACLE_HOME" >&2
+      return 1
+    fi
   fi
-
 }
 unalias sql 2>/dev/null
 sql() {
