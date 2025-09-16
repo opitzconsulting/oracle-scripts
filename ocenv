@@ -2619,16 +2619,18 @@ list_sids() {
   done
 }
 list_listener() {
-  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER LV_COMMENT
+  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER LV_COMMENT LV_LSNR_PS_INFO
   # shellcheck disable=2009 # no pgrep on AIX
   LV_ORA_LSNR_LIST=$(ps -eo args | grep -E "tnslsnr[ ]+" | awk '{print $2}')
   for LV_ORA_LSNR_NAME in ${LV_ORA_LSNR_LIST}
   do
     LV_COMMENT="(${GV_T_GREEN}up${GV_CCLR})"
     # shellcheck disable=2009 # no pgrep on AIX
-    LV_ORA_LSNR_HOME="$(ps -eo args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+" | awk '{print $1}' | sed 's|/bin/tnslsnr||')"
+    LV_LSNR_PS_INFO=$(ps -eo user,args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+")
+
+    LV_ORA_LSNR_HOME="$(echo "${LV_LSNR_PS_INFO}" | awk '{print $2}' | sed 's|/bin/tnslsnr||')"
     # shellcheck disable=2009 # no pgrep on AIX
-    LV_ORA_LSNR_USER="$(ps -eo user,args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+" | awk '{print $1}')"
+    LV_ORA_LSNR_USER="$(echo "${LV_LSNR_PS_INFO}" | awk '{print $1}')"
     if [[ -z "${LV_ORA_LSNR_HOME}" ]]
     then
       echo "Cannot determine listener ORACLE_HOME for listener \"${LV_ORA_LSNR_NAME}\"." 1>&2
