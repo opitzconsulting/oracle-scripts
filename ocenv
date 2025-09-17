@@ -2446,6 +2446,10 @@ list_sids() {
       GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${GV_ASM_SID}"
     fi
   fi
+  ## LV_PROC_LIST is generated before querying CRS, because it is used in both
+  ## blocks. In the CRS-block it is used to verify if the instance is running
+  ## locally without additional calls to "ps" or "crsctl"
+  LV_PROC_LIST="$(ps -eo user,args | sort | awk /[[:alpha:]]_smon_[[:alnum:]]/'{printf("%s,%s\n", $1, $2)}')"
   ## DB Instances from Grid Infrastructure
   if [[ -n "${GV_GRID_HOME}" ]]
   then
@@ -2461,14 +2465,19 @@ list_sids() {
           printf("unset LV_TNS_ADMIN\n");
           printf("unset LV_ORA_HOME\n");
           printf("unset LV_INST_NAME\n");
+          printf("unset LV_PROC_USER\n");
         }
-        /^(DB_UNIQUE_NAME|USR_ORA_INST_NAME|USR_ORA_INST_NAME@SERVERNAME\(.*\)|GEN_USR_ORA_INST_NAME|GEN_USR_ORA_INST_NAME@SERVERNAME\(.*\)|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{
-          if ($1 == "DB_UNIQUE_NAME") {
-            printf("typeset LV_DB_UNIQUE_NAME=%s\n", $2)
+        /^(ACL|DB_UNIQUE_NAME|USR_ORA_INST_NAME|USR_ORA_INST_NAME@SERVERNAME\(.*\)|GEN_USR_ORA_INST_NAME|GEN_USR_ORA_INST_NAME@SERVERNAME\(.*\)|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{
+          if ($1 == "ACL") {
+            split($2, lv_acls, ",");
+            split(lv_acls[1], lv_owner_acl, ":");
+            printf("typeset LV_PROC_USER=%s\n", lv_owner_acl[2]);
+          } else if ($1 == "DB_UNIQUE_NAME") {
+            printf("typeset LV_DB_UNIQUE_NAME=%s\n", $2);
           } else if ($1 == "USR_ORA_ENV" && $2 == "TNS_ADMIN") {
-            printf("typeset LV_TNS_ADMIN=%s\n", $3)
+            printf("typeset LV_TNS_ADMIN=%s\n", $3);
           } else if ($1 == "ORACLE_HOME") {
-            printf("typeset LV_ORA_HOME=%s\n", $2)
+            printf("typeset LV_ORA_HOME=%s\n", $2);
           } else if ($1 == "USR_ORA_INST_NAME" && $2 != "") {
             printf("typeset LV_INST_NAME=%s\n", $2);
             sid_set = 1;
@@ -2489,26 +2498,15 @@ list_sids() {
         then
           unalias "${LV_INST_NAME}"
         fi
-        local LV_PROC LV_PROC_USER LV_PROC_ARGS LV_TYPE LV_COMMENT
-        LV_PROC=$(ps -eo user,args | awk "/[[:alpha:]]_smon_${LV_INST_NAME}"'$/{printf("%s,%s\n", $1, $2)}')
-        LV_PROC_USER="$(echo "${LV_PROC}" | cut -d, -f1)"
-        LV_PROC_ARGS="$(echo "${LV_PROC}" | cut -d, -f2)"
-        LV_TYPE="${LV_PROC_ARGS:0:3}"
+        local LV_PROC_ARGS LV_COMMENT
         LV_COMMENT="(crs,${GV_T_GREEN}up${GV_CCLR})"
-        if [[ "${LV_TYPE}" == "ora" ]]
+        ## Check if LV_INST_NAME is found in running instances
+        if ! echo "${LV_PROC_LIST}" | grep -Eq ",[[:alpha:]]+_smon_${LV_INST_NAME}$"
         then
-          LV_TYPE="db"
-        elif [[ -z "${LV_TYPE}" ]]
-        then
-          LV_TYPE="db"
           LV_COMMENT="(crs,${GV_T_RED}down${GV_CCLR})"
         fi
-        if [[ -z "${LV_PROC_USER}" ]]
-        then
-          LV_PROC_USER="$(stat -c "%U" "${LV_ORA_HOME}")"
-        fi
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
+        printf "%-4s   %-10s   %-16s %-25s             %s\n"  "db" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
         generate_alias_for_dbuniquename "${LV_DB_UNIQUE_NAME}" "${LV_INST_NAME}"
         GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
@@ -2517,7 +2515,8 @@ list_sids() {
     done
   fi
   ## DB Instances from running processes
-  LV_PROC_LIST=$(ps -eo user,args | sort | awk /[[:alpha:]]_smon_[[:alnum:]]/'{printf("%s,%s\n", $1, $2)}')
+  ## LV_PROC_LIST was generated before querying CRS, because it is used in that
+  ## block, too
   for LV_PROC in ${LV_PROC_LIST}
   do
     local LV_PROC_USER LV_PROC_ARGS LV_TYPE LV_COMMENT LV_SID
