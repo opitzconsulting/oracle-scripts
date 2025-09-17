@@ -1932,11 +1932,12 @@ exec_asm_sql_data() {
 get_lsnr_tracefile(){
   local LV_LSNR_NAME="$1"
   [[ -z "${LV_LSNR_NAME}" ]] && LV_LSNR_NAME=LISTENER
-  local LV_LSNR_ORA_HOMES_STRING
+  local LV_LSNR_ORA_HOMES_STRING LV_LSNR_ORA_HOME
+  declare -a LV_LSNR_ORA_HOMES
+
   # shellcheck disable=2009 # no pgrep on AIX
   LV_LSNR_ORA_HOMES_STRING="$(ps -eo args | grep -E "tnslsnr[[:space:]]+${LV_LSNR_NAME}[[:space:]]" | awk '{print $1}' | sed 's|/bin/tnslsnr||' | sort -u)"
 
-  unset LV_LSNR_ORA_HOMES
   for LV_HOME in ${LV_LSNR_ORA_HOMES_STRING}
   do
     LV_LSNR_ORA_HOMES[${#LV_LSNR_ORA_HOMES[@]}]="${LV_HOME}"
@@ -1944,7 +1945,7 @@ get_lsnr_tracefile(){
 
   if [[ "${#LV_LSNR_ORA_HOMES[@]}" -eq 0 ]]
   then
-    echo "Cannot determine ORACLE_HOME for listener \"${LV_LSNR_NAME}\"."
+    echo "Cannot determine ORACLE_HOME for listener \"${LV_LSNR_NAME}\"." 1>&2
     return 1
   elif [[ "${#LV_LSNR_ORA_HOMES[@]}" -eq 1 ]]
   then
