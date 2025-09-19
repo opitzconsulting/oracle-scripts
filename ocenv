@@ -22,6 +22,7 @@ then
   set -x
 fi
 
+################################################################################
 # Bash script to configure the environment for an Oracle DBA
 # Copyright (C) 2021  OPITZ CONSULTING Deutschland GmbH
 #
@@ -37,6 +38,8 @@ fi
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+################################################################################
+
 
 ################################################################################
 # Hints (for usage end enhancements)
@@ -53,9 +56,9 @@ fi
 ################################################################################
 
 ## Version of this script. Simply uses the date in YYYY-MM-DD format
-GV_OCENV_VERSION="2025-03-06"
+GV_OCENV_VERSION="2025-09-17"
 
-###############################################################################
+################################################################################
 ## Environment support homogenization
 GV_OS_TYPE=$(uname -s)
 if [[ -z "${GC_CMD_READLINK}" ]]
@@ -74,10 +77,10 @@ then
   esac
   typeset -r GC_CMD_READLINK
 fi
-###############################################################################
+################################################################################
 # If readlink is not available on the system (e.g. on AIX) the fallback is to
 # use pwd -P and the "cd"-approach to resolve a symbolic link.
-###############################################################################
+################################################################################
 function PwdResolvePath {
   if [[ "$1" == "-f" ]]; then shift; fi
   typeset LV_PATH LV_CMD LV_DIR LV_LINK
@@ -112,7 +115,7 @@ function PwdResolvePath {
   echo "$(pwd -P)${LV_CMD}"
 }
 ## END Environment support homogenization
-###############################################################################
+################################################################################
 
 GV_TTY=$(tty -s; echo $?)
 
@@ -328,6 +331,7 @@ Available commands:
                 "${GV_SQL_DIR}zauberkasten"
   == Miscellaneous
     * envhelp   This help text
+    * envstatus some diagnostic information about the installation environment
     * varhelp   information about all variables defined in this script
     * ocenv     alias to source the environment script
     * u         reload the complete environment without sourcing the script
@@ -348,6 +352,23 @@ Available commands:
                 Update/install "autoupgrade.jar" in the currently selected
                 ORACLE_HOME
 EOT
+}
+
+envstatus() {
+  echo "#######################################################################"
+  echo "# OCENV Version ${GV_OCENV_VERSION}"
+  echo "#"
+  echo "# Bash Version    : ${BASH_VERSION}"
+  echo "#"
+  echo "# Installationsort: ${GV_SCRIPT_DIR}"
+  echo "# SQL Skript Pfad : ${GV_SQL_DIR}"
+  echo "# Executable Pfad : ${GV_BIN_DIR}"
+  echo "#"
+  echo "# Custom login.sql: ${GV_CUSTOM_LOGIN_SQL}"
+  echo "#"
+  echo "# Custom NLS_LANG       : ${GV_NLS_LANG}"
+  echo "# Custom NLS_DATE_FORMAT: ${GV_NLS_DATE_FORMAT}"
+  echo "#######################################################################"
 }
 
 varhelp() {
@@ -629,9 +650,9 @@ echo_tty() {
   fi
 }
 
-##############################################################################
+################################################################################
 # Queries /etc/oracle/ocr.loc for information about installed Grid Infrastructure
-##############################################################################
+################################################################################
 is_rac() {
   if [[ -e /etc/oracle/ocr.loc && -r /etc/oracle/ocr.loc ]]
   then
@@ -910,9 +931,22 @@ sqlint() {
     ${GV_RLWRAP} "${ORACLE_HOME}/bin/sqlplus" "$@"
   elif [[ "${LV_BINARY}" == "sqlcl" ]]
   then
-    bash "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" "$@"
+    # This used to be the path where the "sql" binary (providing the "sqlcl"
+    # tool) was located
+    if [[ -x "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" ]]
+    then
+      bash "${ORACLE_HOME}/sqldeveloper/sqldeveloper/bin/sql" "$@"
+    # With either the JUL2024 or the OCT2024 this binary was moved and can now
+    # be found in the bin directory in the ORACLE_HOME. Unfortunately, we use
+    # "sql" as a method-name, so this is inaccessible without this codepath
+    elif [[ -x "${ORACLE_HOME}/bin/sql" ]]
+    then
+      bash "${ORACLE_HOME}/bin/sql" "$@"
+    else
+      echo "Cannot find \"sql\" binary in ORACLE_HOME" >&2
+      return 1
+    fi
   fi
-
 }
 unalias sql 2>/dev/null
 sql() {
@@ -1794,36 +1828,36 @@ in_list() {
   LV_INDEX="$(in_list_index "$@")"
   return $?
 }
-##############################################################################
+################################################################################
 # Pipeline-function to convert stdin to lowercase
-##############################################################################
+################################################################################
 to_lower() {
   tr '[:upper:]' '[:lower:]'
 }
-##############################################################################
+################################################################################
 # Quickly list all running instances
 #
 # Prerequisites: None
-##############################################################################
+################################################################################
 get_running_sids() {
   ps -eo user,args | awk '/[[:alpha:]]_smon_[[:alnum:]]/{split($2, a, "_"); print a[3];}' | sort -u
 }
-##############################################################################
+################################################################################
 # Find out if database-instance is running by looking for ora_smon process
 # Oracle XE databases use "xe_smon" as process-prefix
 # Oracle 23c FREE databases use "db_smon" as process-prefix
 #
 # Prerequisites: None
-##############################################################################
+################################################################################
 is_db_running() {
   local LV_ORACLE_SID
   LV_ORACLE_SID=$1
   # shellcheck disable=2009 # no pgrep on AIX
   ps -ef | grep -q -E -w "(ora|xe|db)_smon_${LV_ORACLE_SID}"
 }
-##############################################################################
+################################################################################
 # Find out if ASM-instance is running by looking for asm_smon process
-##############################################################################
+################################################################################
 is_asm_running() {
   [[ -n "${GV_ASM_SID}" ]] || return 1
   # No Index for the array, we only use the first hit
@@ -1831,10 +1865,10 @@ is_asm_running() {
   # shellcheck disable=2009 # no pgrep on AIX
   ps -ef | grep -q -E -w "(asm)_smon_\\${GV_ASM_SID}"
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against the current database.
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_sql_data() {
   if [[ -n "${TWO_TASK}" ]]
   then
@@ -1864,10 +1898,10 @@ exec_sql_data() {
   fi
   return ${LV_RET_CODE}
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against all running instances
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_on_all_sids() {
   shopt -s expand_aliases
   for LV_SID in $(get_running_sids)
@@ -1878,10 +1912,10 @@ exec_on_all_sids() {
   done
   shopt -u expand_aliases
 }
-##############################################################################
+################################################################################
 # Execute an SQL statement against the ASM-instance.
 # Output will contain only resulting data, without header.
-##############################################################################
+################################################################################
 exec_asm_sql_data() {
   (
     if myoraenv "${GV_ASM_SID}"
@@ -1898,11 +1932,12 @@ exec_asm_sql_data() {
 get_lsnr_tracefile(){
   local LV_LSNR_NAME="$1"
   [[ -z "${LV_LSNR_NAME}" ]] && LV_LSNR_NAME=LISTENER
-  local LV_LSNR_ORA_HOMES_STRING
+  local LV_LSNR_ORA_HOMES_STRING LV_LSNR_ORA_HOME
+  declare -a LV_LSNR_ORA_HOMES
+
   # shellcheck disable=2009 # no pgrep on AIX
   LV_LSNR_ORA_HOMES_STRING="$(ps -eo args | grep -E "tnslsnr[[:space:]]+${LV_LSNR_NAME}[[:space:]]" | awk '{print $1}' | sed 's|/bin/tnslsnr||' | sort -u)"
 
-  unset LV_LSNR_ORA_HOMES
   for LV_HOME in ${LV_LSNR_ORA_HOMES_STRING}
   do
     LV_LSNR_ORA_HOMES[${#LV_LSNR_ORA_HOMES[@]}]="${LV_HOME}"
@@ -1910,7 +1945,7 @@ get_lsnr_tracefile(){
 
   if [[ "${#LV_LSNR_ORA_HOMES[@]}" -eq 0 ]]
   then
-    echo "Cannot determine ORACLE_HOME for listener \"${LV_LSNR_NAME}\"."
+    echo "Cannot determine ORACLE_HOME for listener \"${LV_LSNR_NAME}\"." 1>&2
     return 1
   elif [[ "${#LV_LSNR_ORA_HOMES[@]}" -eq 1 ]]
   then
@@ -2370,6 +2405,7 @@ mystat() {
 }
 list_sids() {
   local LV_IS_RAC LV_ASM_LINE_LIST LV_ASM_LINE_COUNT
+  unset GV_DB_SID_LIST
   LV_IS_RAC=$(is_rac && echo TRUE || echo FALSE);
   LV_ASM_LINE_LIST=$(grep '^+ASM[0-9]*:[^:]\+:.*$' /etc/oratab 2>/dev/null)
   LV_ASM_LINE_COUNT="$(echo "${LV_ASM_LINE_LIST}" | wc -l)"
@@ -2410,6 +2446,10 @@ list_sids() {
       GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${GV_ASM_SID}"
     fi
   fi
+  ## LV_PROC_LIST is generated before querying CRS, because it is used in both
+  ## blocks. In the CRS-block it is used to verify if the instance is running
+  ## locally without additional calls to "ps" or "crsctl"
+  LV_PROC_LIST="$(ps -eo user,args | sort | awk /[[:alpha:]]_smon_[[:alnum:]]/'{printf("%s,%s\n", $1, $2)}')"
   ## DB Instances from Grid Infrastructure
   if [[ -n "${GV_GRID_HOME}" ]]
   then
@@ -2418,7 +2458,39 @@ list_sids() {
     for LV_RES in ${LV_DB_RESOURCE_LIST}
     do
       typeset LV_ENV_VARS
-      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "${LV_RES}" -p | awk -v hn="$(hostname | cut -d. -f1)" -F= 'BEGIN{sid_set = 0} /^(DB_UNIQUE_NAME|USR_ORA_INST_NAME|USR_ORA_INST_NAME@SERVERNAME\(.*\)|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{if ($1 == "DB_UNIQUE_NAME") {printf("typeset LV_DB_UNIQUE_NAME=%s\n", $2)} else if ($1 == "USR_ORA_ENV" && $2 == "TNS_ADMIN") {printf("typeset LV_TNS_ADMIN=%s\n", $3)} else if ($1 == "ORACLE_HOME") {printf("typeset LV_ORA_HOME=%s\n", $2)} else if ($1 == "USR_ORA_INST_NAME" && $2 != "") {printf("typeset LV_INST_NAME=%s\n", $2);sid_set = 1;} else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {printf("typeset LV_INST_NAME=%s\n", $2);}}')"
+      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "${LV_RES}" -p | awk -v hn="$(hostname | cut -d. -f1)" -F= '
+        BEGIN{
+          sid_set = 0;
+          printf("unset LV_DB_UNIQUE_NAME\n");
+          printf("unset LV_TNS_ADMIN\n");
+          printf("unset LV_ORA_HOME\n");
+          printf("unset LV_INST_NAME\n");
+          printf("unset LV_PROC_USER\n");
+        }
+        /^(ACL|DB_UNIQUE_NAME|USR_ORA_INST_NAME|USR_ORA_INST_NAME@SERVERNAME\(.*\)|GEN_USR_ORA_INST_NAME|GEN_USR_ORA_INST_NAME@SERVERNAME\(.*\)|ORACLE_HOME|USR_ORA_ENV=TNS_ADMIN)=/{
+          if ($1 == "ACL") {
+            split($2, lv_acls, ",");
+            split(lv_acls[1], lv_owner_acl, ":");
+            printf("typeset LV_PROC_USER=%s\n", lv_owner_acl[2]);
+          } else if ($1 == "DB_UNIQUE_NAME") {
+            printf("typeset LV_DB_UNIQUE_NAME=%s\n", $2);
+          } else if ($1 == "USR_ORA_ENV" && $2 == "TNS_ADMIN") {
+            printf("typeset LV_TNS_ADMIN=%s\n", $3);
+          } else if ($1 == "ORACLE_HOME") {
+            printf("typeset LV_ORA_HOME=%s\n", $2);
+          } else if ($1 == "USR_ORA_INST_NAME" && $2 != "") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
+          } else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
+          } else if ($1 == "GEN_USR_ORA_INST_NAME" && $2 != "") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
+          } else if (sid_set == 0 && $1 == "GEN_USR_ORA_INST_NAME@SERVERNAME("hn")") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+          }
+        }')"
       eval "${LV_ENV_VARS}"
       if [[ -n "${LV_ENV_VARS}" && -n "${LV_INST_NAME}" ]]
       then
@@ -2426,34 +2498,25 @@ list_sids() {
         then
           unalias "${LV_INST_NAME}"
         fi
-        local LV_PROC LV_PROC_USER LV_PROC_ARGS LV_TYPE LV_COMMENT
-        LV_PROC=$(ps -eo user,args | awk "/[[:alpha:]]_smon_${LV_INST_NAME}"'$/{printf("%s,%s\n", $1, $2)}')
-        LV_PROC_USER="$(echo "${LV_PROC}" | cut -d, -f1)"
-        LV_PROC_ARGS="$(echo "${LV_PROC}" | cut -d, -f2)"
-        LV_TYPE="${LV_PROC_ARGS:0:3}"
+        local LV_PROC_ARGS LV_COMMENT
         LV_COMMENT="(crs,${GV_T_GREEN}up${GV_CCLR})"
-        if [[ "${LV_TYPE}" == "ora" ]]
+        ## Check if LV_INST_NAME is found in running instances
+        if ! echo "${LV_PROC_LIST}" | grep -Eq ",[[:alpha:]]+_smon_${LV_INST_NAME}$"
         then
-          LV_TYPE="db"
-        elif [[ -z "${LV_TYPE}" ]]
-        then
-          LV_TYPE="db"
           LV_COMMENT="(crs,${GV_T_RED}down${GV_CCLR})"
         fi
-        if [[ -z "${LV_PROC_USER}" ]]
-        then
-          LV_PROC_USER="$(stat -c "%U" "${LV_ORA_HOME}")"
-        fi
         ## Format-width for "COMMENT"-column adjusted for 12 (8+4) invisible format characters (see top of script)
-        printf "%-4s   %-10s   %-16s %-25s             %s\n"  "${LV_TYPE}" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
+        printf "%-4s   %-10s   %-16s %-25s             %s\n"  "db" "${LV_PROC_USER}" "${LV_INST_NAME}" "${LV_COMMENT}" "${LV_ORA_HOME}"
         generate_alias_for_sid "${LV_INST_NAME}" "${LV_ORA_HOME}" "${LV_TNS_ADMIN}"
         generate_alias_for_dbuniquename "${LV_DB_UNIQUE_NAME}" "${LV_INST_NAME}"
+        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_INST_NAME}"
       fi
     done
   fi
   ## DB Instances from running processes
-  LV_PROC_LIST=$(ps -eo user,args | sort | awk /[[:alpha:]]_smon_[[:alnum:]]/'{printf("%s,%s\n", $1, $2)}')
+  ## LV_PROC_LIST was generated before querying CRS, because it is used in that
+  ## block, too
   for LV_PROC in ${LV_PROC_LIST}
   do
     local LV_PROC_USER LV_PROC_ARGS LV_TYPE LV_COMMENT LV_SID
@@ -2484,6 +2547,7 @@ list_sids() {
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
+          GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
           GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
         fi
       fi
@@ -2548,22 +2612,20 @@ list_sids() {
       if [[ "${LV_TYPE}" != "asm" ]]
       then
         generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
+        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
       fi
     fi
   done
 }
 list_listener() {
-  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER LV_COMMENT
-  # shellcheck disable=2009 # no pgrep on AIX
-  LV_ORA_LSNR_LIST=$(ps -eo args | grep -E "tnslsnr[ ]+" | awk '{print $2}')
-  for LV_ORA_LSNR_NAME in ${LV_ORA_LSNR_LIST}
+  local LV_ORA_LSNR_HOME LV_ORA_LSNR_USER LV_COMMENT LV_LSNR_PS_INFO
+  while read -r LV_LSNR_PS_INFO
   do
     LV_COMMENT="(${GV_T_GREEN}up${GV_CCLR})"
-    # shellcheck disable=2009 # no pgrep on AIX
-    LV_ORA_LSNR_HOME="$(ps -eo args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+" | awk '{print $1}' | sed 's|/bin/tnslsnr||')"
-    # shellcheck disable=2009 # no pgrep on AIX
-    LV_ORA_LSNR_USER="$(ps -eo user,args | grep -E "tnslsnr[ ]+${LV_ORA_LSNR_NAME}[ ]+" | awk '{print $1}')"
+    LV_ORA_LSNR_NAME="$(echo "${LV_LSNR_PS_INFO}" | awk '{print $3}')"
+    LV_ORA_LSNR_HOME="$(echo "${LV_LSNR_PS_INFO}" | awk '{print $2}' | sed 's|/bin/tnslsnr||')"
+    LV_ORA_LSNR_USER="$(echo "${LV_LSNR_PS_INFO}" | awk '{print $1}')"
     if [[ -z "${LV_ORA_LSNR_HOME}" ]]
     then
       echo "Cannot determine listener ORACLE_HOME for listener \"${LV_ORA_LSNR_NAME}\"." 1>&2
@@ -2572,7 +2634,10 @@ list_listener() {
     generate_alias_for_listener "${LV_ORA_LSNR_NAME}" "${LV_ORA_LSNR_HOME}"
     GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_ORA_LSNR_NAME}"
     printf "%-5s  %-10s   %-16s %-25s             %s\n"  "lsnr" "${LV_ORA_LSNR_USER}" "${LV_ORA_LSNR_NAME}" "${LV_COMMENT}" "${LV_ORA_LSNR_HOME}"
-  done
+  done <<< "$(
+      # shellcheck disable=SC2009
+      ps -eo user,args | grep -E "tnslsnr[ ]+"
+    )"
 
   ## Read lines from /etc/oratab that contain the startup-flag "L"
   ## and that are not commented
