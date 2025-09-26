@@ -2468,7 +2468,7 @@ list_sids() {
       }
       /^.+$/{
         printf("%s:%s\n", v_prefix, $0);
-      }'
+      }' | sort -u
     )
     LV_DB_RESOURCE_NAME_LIST=$(echo "${LV_DB_RESOURCE_LIST}" | awk -F= '/:NAME=/{print $2}')
     for LV_RES in ${LV_DB_RESOURCE_NAME_LIST}
