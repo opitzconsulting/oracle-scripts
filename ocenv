@@ -795,7 +795,7 @@ myoraenv() {
     return 1
   fi
 
-  local LV_ORACLE_SID LV_ORACLE_HOME LV_TNS_ADMIN LV_DB_NAME LV_DB_UNIQUE_NAME
+  local LV_ORACLE_SID LV_CRS_OUTPUT LV_ORACLE_HOME LV_TNS_ADMIN LV_DB_NAME LV_DB_UNIQUE_NAME
 
   LV_ORACLE_SID="${1}";
   if [[ "${LV_ORACLE_SID}" == "${GV_ASM_SID}" ]]
@@ -803,12 +803,13 @@ myoraenv() {
     LV_ORACLE_HOME="${GV_GRID_HOME}"
   elif [[ -n "${GV_GRID_HOME}" ]]
   then
-    LV_ORACLE_HOME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^ORACLE_HOME=" | cut -d"=" -f2)
+    LV_CRS_OUTPUT="$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID})) -n $(hostname | cut -d. -f1)")"
+    LV_ORACLE_HOME=$(echo "${LV_CRS_OUTPUT}" | grep "^ORACLE_HOME=" | cut -d"=" -f2)
     if [[ -n "${LV_ORACLE_HOME}" ]]
     then
-      LV_TNS_ADMIN=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_ENV=TNS_ADMIN=" | cut -d"=" -f3)
-      LV_DB_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^USR_ORA_DB_NAME=" | cut -d"=" -f2)
-      LV_DB_UNIQUE_NAME=$("${GV_GRID_HOME}"/bin/crsctl stat res -p -w "((TYPE = ora.database.type) and (GEN_USR_ORA_INST_NAME = ${LV_ORACLE_SID}))" | grep "^DB_UNIQUE_NAME=" | cut -d"=" -f2)
+      LV_TNS_ADMIN=$(echo "${LV_CRS_OUTPUT}" | grep "^USR_ORA_ENV=TNS_ADMIN=" | cut -d"=" -f3)
+      LV_DB_NAME=$(echo "${LV_CRS_OUTPUT}" | grep "^USR_ORA_DB_NAME=" | cut -d"=" -f2)
+      LV_DB_UNIQUE_NAME=$(echo "${LV_CRS_OUTPUT}" | grep "^DB_UNIQUE_NAME=" | cut -d"=" -f2)
     fi
   fi
   if [[ -z "${LV_ORACLE_HOME}" ]]
@@ -2454,11 +2455,26 @@ list_sids() {
   if [[ -n "${GV_GRID_HOME}" ]]
   then
     typeset LV_DB_RESOURCE_LIST
-    LV_DB_RESOURCE_LIST=$("${GV_GRID_HOME}/bin/crsctl" stat res -w "((TYPE = ora.database.type))" | awk -F= '/^NAME=/{print $2}')
-    for LV_RES in ${LV_DB_RESOURCE_LIST}
+    LV_DB_RESOURCE_LIST=$("${GV_GRID_HOME}/bin/crsctl" stat res -p -w "((TYPE = ora.database.type)) -n $(hostname | cut -d. -f1)" | awk -F= '
+      BEGIN{
+        v_prefix="";
+      }
+      /^NAME=/{
+        v_prefix=$2;
+      }
+      /^$/{
+        v_prefix="";
+        print $0;
+      }
+      /^.+$/{
+        printf("%s:%s\n", v_prefix, $0);
+      }'
+    )
+    LV_DB_RESOURCE_NAME_LIST=$(echo "${LV_DB_RESOURCE_LIST}" | awk -F= '/:NAME=/{print $2}')
+    for LV_RES in ${LV_DB_RESOURCE_NAME_LIST}
     do
       typeset LV_ENV_VARS
-      LV_ENV_VARS="$("${GV_GRID_HOME}/bin/crsctl" stat res "${LV_RES}" -p | awk -v hn="$(hostname | cut -d. -f1)" -F= '
+      LV_ENV_VARS="$(echo "${LV_DB_RESOURCE_LIST}" | grep "^${LV_RES}:" | sed "s/^${LV_RES}://g" | awk -v hn="$(hostname | cut -d. -f1)" -F= '
         BEGIN{
           sid_set = 0;
           printf("unset LV_DB_UNIQUE_NAME\n");
@@ -2478,17 +2494,18 @@ list_sids() {
             printf("typeset LV_TNS_ADMIN=%s\n", $3);
           } else if ($1 == "ORACLE_HOME") {
             printf("typeset LV_ORA_HOME=%s\n", $2);
-          } else if ($1 == "USR_ORA_INST_NAME" && $2 != "") {
-            printf("typeset LV_INST_NAME=%s\n", $2);
-            sid_set = 1;
           } else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {
-            printf("typeset LV_INST_NAME=%s\n", $2);
-            sid_set = 1;
-          } else if ($1 == "GEN_USR_ORA_INST_NAME" && $2 != "") {
             printf("typeset LV_INST_NAME=%s\n", $2);
             sid_set = 1;
           } else if (sid_set == 0 && $1 == "GEN_USR_ORA_INST_NAME@SERVERNAME("hn")") {
             printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
+          } else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME" && $2 != "") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
+          } else if (sid_set == 0 && $1 == "GEN_USR_ORA_INST_NAME" && $2 != "") {
+            printf("typeset LV_INST_NAME=%s\n", $2);
+            sid_set = 1;
           }
         }')"
       eval "${LV_ENV_VARS}"
@@ -2498,7 +2515,7 @@ list_sids() {
         then
           unalias "${LV_INST_NAME}"
         fi
-        local LV_PROC_ARGS LV_COMMENT
+        local LV_COMMENT
         LV_COMMENT="(crs,${GV_T_GREEN}up${GV_CCLR})"
         ## Check if LV_INST_NAME is found in running instances
         if ! echo "${LV_PROC_LIST}" | grep -Eq ",[[:alpha:]]+_smon_${LV_INST_NAME}$"
