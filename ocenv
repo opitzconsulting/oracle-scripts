@@ -2494,10 +2494,10 @@ list_sids() {
             printf("typeset LV_TNS_ADMIN=%s\n", $3);
           } else if ($1 == "ORACLE_HOME") {
             printf("typeset LV_ORA_HOME=%s\n", $2);
-          } else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {
+          } else if ($1 == "USR_ORA_INST_NAME@SERVERNAME("hn")") {
             printf("typeset LV_INST_NAME=%s\n", $2);
             sid_set = 1;
-          } else if (sid_set == 0 && $1 == "GEN_USR_ORA_INST_NAME@SERVERNAME("hn")") {
+          } else if ($1 == "GEN_USR_ORA_INST_NAME@SERVERNAME("hn")") {
             printf("typeset LV_INST_NAME=%s\n", $2);
             sid_set = 1;
           } else if (sid_set == 0 && $1 == "USR_ORA_INST_NAME" && $2 != "") {
