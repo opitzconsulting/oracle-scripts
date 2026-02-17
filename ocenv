@@ -2564,7 +2564,7 @@ list_sids() {
         if [[ "${LV_TYPE}" != "asm" ]] && ! in_list "${LV_SID}" "${GV_ALIAS_LIST[@]}"
         then
           generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
-          GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
+          GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_SID}"
           GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
         fi
       fi
@@ -2629,7 +2629,7 @@ list_sids() {
       if [[ "${LV_TYPE}" != "asm" ]]
       then
         generate_alias_for_sid "${LV_SID}" "${LV_ORA_HOME}"
-        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_INST_NAME}"
+        GV_DB_SID_LIST[${#GV_DB_SID_LIST[@]}]="${LV_SID}"
         GV_ALIAS_LIST[${#GV_ALIAS_LIST[@]}]="${LV_SID}"
       fi
     fi
