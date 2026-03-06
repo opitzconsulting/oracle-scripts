@@ -630,7 +630,10 @@ then
 else
   alias psg='ps aux | grep -v grep | grep --color=auto'
 fi
-if [[ -x "$(command which less 2>/dev/null)" ]]
+if [[ -x "$(command which bat 2>/dev/null)" ]]
+then
+  export GV_PAGER=bat
+elif [[ -x "$(command which less 2>/dev/null)" ]]
 then
   export GV_PAGER=less
 else
@@ -638,8 +641,14 @@ else
 fi
 alias via='${GV_PAGER} ${GV_INSTANCE_ALERT_LOG}'
 alias vio='${EDITOR} /etc/oratab'
-alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG}'
-alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG}'
+if [ "${GV_PAGER}" == "bat" ]
+then
+  alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG}' | bat --paging=never -l log
+  alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG}' | bat --paging=never -l log
+else
+  alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG}'
+  alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG}'
+fi
 alias u=list_env
 unalias sql 2>/dev/null
 
