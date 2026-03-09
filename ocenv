@@ -1997,7 +1997,12 @@ talsnr(){
   local LV_LSNR_LOG
   if LV_LSNR_LOG=$(get_lsnr_tracefile "$1")
   then
-    tail -n50 -f "${LV_LSNR_LOG}"
+    if [ "${GV_PAGER}" == "bat" ]
+    then
+      tail -n50 -f "${LV_LSNR_LOG}" | bat --paging=never -l log
+    else
+      tail -n50 -f "${LV_LSNR_LOG}"
+    fi
   fi
 }
 vilsnr(){
