@@ -643,8 +643,8 @@ alias via='${GV_PAGER} ${GV_INSTANCE_ALERT_LOG}'
 alias vio='${EDITOR} /etc/oratab'
 if [ "${GV_PAGER}" == "bat" ]
 then
-  alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG}' | bat --paging=never -l log
-  alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG}' | bat --paging=never -l log
+  alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG} | bat --paging=never -l log'
+  alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG} | bat --paging=never -l log'
 else
   alias taa='tail -n50 -f ${GV_INSTANCE_ALERT_LOG}'
   alias tad='tail -n50 -f ${GV_INSTANCE_DRC_LOG}'
